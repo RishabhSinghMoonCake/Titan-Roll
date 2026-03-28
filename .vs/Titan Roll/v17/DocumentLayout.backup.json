@@ -1,0 +1,181 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "C:\\Users\\Lenovo\\Titan Roll\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{EEF9518D-933C-6196-BBA6-078A67329141}|Assembly-CSharp.csproj|c:\\users\\lenovo\\titan roll\\assets\\scripts\\game\\splineroadgenerator.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{EEF9518D-933C-6196-BBA6-078A67329141}|Assembly-CSharp.csproj|solutionrelative:assets\\scripts\\game\\splineroadgenerator.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{EEF9518D-933C-6196-BBA6-078A67329141}|Assembly-CSharp.csproj|C:\\Users\\Lenovo\\Titan Roll\\assets\\scripts\\game\\destructible.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{EEF9518D-933C-6196-BBA6-078A67329141}|Assembly-CSharp.csproj|solutionrelative:assets\\scripts\\game\\destructible.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{EEF9518D-933C-6196-BBA6-078A67329141}|Assembly-CSharp.csproj|C:\\Users\\Lenovo\\Titan Roll\\assets\\scripts\\managers\\poolabledebris.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{EEF9518D-933C-6196-BBA6-078A67329141}|Assembly-CSharp.csproj|solutionrelative:assets\\scripts\\managers\\poolabledebris.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{EEF9518D-933C-6196-BBA6-078A67329141}|Assembly-CSharp.csproj|C:\\Users\\Lenovo\\Titan Roll\\assets\\scripts\\managers\\objectpooler.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{EEF9518D-933C-6196-BBA6-078A67329141}|Assembly-CSharp.csproj|solutionrelative:assets\\scripts\\managers\\objectpooler.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{EEF9518D-933C-6196-BBA6-078A67329141}|Assembly-CSharp.csproj|C:\\Users\\Lenovo\\Titan Roll\\assets\\scripts\\game\\debrisfader.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{EEF9518D-933C-6196-BBA6-078A67329141}|Assembly-CSharp.csproj|solutionrelative:assets\\scripts\\game\\debrisfader.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{EEF9518D-933C-6196-BBA6-078A67329141}|Assembly-CSharp.csproj|C:\\Users\\Lenovo\\Titan Roll\\assets\\scripts\\arcadeboulder.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{EEF9518D-933C-6196-BBA6-078A67329141}|Assembly-CSharp.csproj|solutionrelative:assets\\scripts\\arcadeboulder.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{EEF9518D-933C-6196-BBA6-078A67329141}|Assembly-CSharp.csproj|C:\\Users\\Lenovo\\Titan Roll\\assets\\scripts\\managers\\playerdatamanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{EEF9518D-933C-6196-BBA6-078A67329141}|Assembly-CSharp.csproj|solutionrelative:assets\\scripts\\managers\\playerdatamanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{EEF9518D-933C-6196-BBA6-078A67329141}|Assembly-CSharp.csproj|C:\\Users\\Lenovo\\Titan Roll\\assets\\scripts\\managers\\gamelevelmanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{EEF9518D-933C-6196-BBA6-078A67329141}|Assembly-CSharp.csproj|solutionrelative:assets\\scripts\\managers\\gamelevelmanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{EEF9518D-933C-6196-BBA6-078A67329141}|Assembly-CSharp.csproj|C:\\Users\\Lenovo\\Titan Roll\\assets\\scripts\\managers\\inputmanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{EEF9518D-933C-6196-BBA6-078A67329141}|Assembly-CSharp.csproj|solutionrelative:assets\\scripts\\managers\\inputmanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{EEF9518D-933C-6196-BBA6-078A67329141}|Assembly-CSharp.csproj|C:\\Users\\Lenovo\\Titan Roll\\assets\\scripts\\managers\\playerdata.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{EEF9518D-933C-6196-BBA6-078A67329141}|Assembly-CSharp.csproj|solutionrelative:assets\\scripts\\managers\\playerdata.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 0,
+          "Children": [
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "SplineRoadGenerator.cs",
+              "DocumentMoniker": "C:\\Users\\Lenovo\\Titan Roll\\Assets\\Scripts\\Game\\SplineRoadGenerator.cs",
+              "RelativeDocumentMoniker": "Assets\\Scripts\\Game\\SplineRoadGenerator.cs",
+              "ToolTip": "C:\\Users\\Lenovo\\Titan Roll\\Assets\\Scripts\\Game\\SplineRoadGenerator.cs",
+              "RelativeToolTip": "Assets\\Scripts\\Game\\SplineRoadGenerator.cs",
+              "ViewState": "AgIAAIsAAAAAAAAAAAAcwKYAAAAoAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-02-02T05:40:24.151Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "PoolableDebris.cs",
+              "DocumentMoniker": "C:\\Users\\Lenovo\\Titan Roll\\Assets\\Scripts\\Managers\\PoolableDebris.cs",
+              "RelativeDocumentMoniker": "Assets\\Scripts\\Managers\\PoolableDebris.cs",
+              "ToolTip": "C:\\Users\\Lenovo\\Titan Roll\\Assets\\Scripts\\Managers\\PoolableDebris.cs",
+              "RelativeToolTip": "Assets\\Scripts\\Managers\\PoolableDebris.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAIAAAA6AAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-01-29T17:58:31.294Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "ObjectPooler.cs",
+              "DocumentMoniker": "C:\\Users\\Lenovo\\Titan Roll\\Assets\\Scripts\\Managers\\ObjectPooler.cs",
+              "RelativeDocumentMoniker": "Assets\\Scripts\\Managers\\ObjectPooler.cs",
+              "ToolTip": "C:\\Users\\Lenovo\\Titan Roll\\Assets\\Scripts\\Managers\\ObjectPooler.cs",
+              "RelativeToolTip": "Assets\\Scripts\\Managers\\ObjectPooler.cs",
+              "ViewState": "AgIAAE4AAAAAAAAAAAAtwGIAAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-01-29T17:58:07.01Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "DebrisFader.cs",
+              "DocumentMoniker": "C:\\Users\\Lenovo\\Titan Roll\\Assets\\Scripts\\Game\\DebrisFader.cs",
+              "RelativeDocumentMoniker": "Assets\\Scripts\\Game\\DebrisFader.cs",
+              "ToolTip": "C:\\Users\\Lenovo\\Titan Roll\\Assets\\Scripts\\Game\\DebrisFader.cs",
+              "RelativeToolTip": "Assets\\Scripts\\Game\\DebrisFader.cs",
+              "ViewState": "AgIAAAEAAAAAAAAAAAAwwCQAAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-01-29T17:30:21.95Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "Destructible.cs",
+              "DocumentMoniker": "C:\\Users\\Lenovo\\Titan Roll\\Assets\\Scripts\\Game\\Destructible.cs",
+              "RelativeDocumentMoniker": "Assets\\Scripts\\Game\\Destructible.cs",
+              "ToolTip": "C:\\Users\\Lenovo\\Titan Roll\\Assets\\Scripts\\Game\\Destructible.cs",
+              "RelativeToolTip": "Assets\\Scripts\\Game\\Destructible.cs",
+              "ViewState": "AgIAAEMAAAAAAAAAAAAQwFkAAABXAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-01-29T17:29:55.957Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 5,
+              "Title": "ArcadeBoulder.cs",
+              "DocumentMoniker": "C:\\Users\\Lenovo\\Titan Roll\\Assets\\Scripts\\ArcadeBoulder.cs",
+              "RelativeDocumentMoniker": "Assets\\Scripts\\ArcadeBoulder.cs",
+              "ToolTip": "C:\\Users\\Lenovo\\Titan Roll\\Assets\\Scripts\\ArcadeBoulder.cs",
+              "RelativeToolTip": "Assets\\Scripts\\ArcadeBoulder.cs",
+              "ViewState": "AgIAAHQAAAAAAAAAAAAowIQAAAAkAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-01-26T07:48:52.042Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 6,
+              "Title": "PlayerDataManager.cs",
+              "DocumentMoniker": "C:\\Users\\Lenovo\\Titan Roll\\Assets\\Scripts\\Managers\\PlayerDataManager.cs",
+              "RelativeDocumentMoniker": "Assets\\Scripts\\Managers\\PlayerDataManager.cs",
+              "ToolTip": "C:\\Users\\Lenovo\\Titan Roll\\Assets\\Scripts\\Managers\\PlayerDataManager.cs",
+              "RelativeToolTip": "Assets\\Scripts\\Managers\\PlayerDataManager.cs",
+              "ViewState": "AgIAAD4AAAAAAAAAAAAgwAQAAAANAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-01-26T00:45:05.91Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 9,
+              "Title": "PlayerData.cs",
+              "DocumentMoniker": "C:\\Users\\Lenovo\\Titan Roll\\Assets\\Scripts\\Managers\\PlayerData.cs",
+              "RelativeDocumentMoniker": "Assets\\Scripts\\Managers\\PlayerData.cs",
+              "ToolTip": "C:\\Users\\Lenovo\\Titan Roll\\Assets\\Scripts\\Managers\\PlayerData.cs",
+              "RelativeToolTip": "Assets\\Scripts\\Managers\\PlayerData.cs",
+              "ViewState": "AgIAAAsAAAAAAAAAAAAAwBoAAAAXAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-01-26T00:44:43.535Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 8,
+              "Title": "InputManager.cs",
+              "DocumentMoniker": "C:\\Users\\Lenovo\\Titan Roll\\Assets\\Scripts\\Managers\\InputManager.cs",
+              "RelativeDocumentMoniker": "Assets\\Scripts\\Managers\\InputManager.cs",
+              "ToolTip": "C:\\Users\\Lenovo\\Titan Roll\\Assets\\Scripts\\Managers\\InputManager.cs",
+              "RelativeToolTip": "Assets\\Scripts\\Managers\\InputManager.cs",
+              "ViewState": "AgIAAEoAAAAAAAAAAAAwwG0AAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-01-23T05:10:29.694Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 7,
+              "Title": "GameLevelManager.cs",
+              "DocumentMoniker": "C:\\Users\\Lenovo\\Titan Roll\\Assets\\Scripts\\Managers\\GameLevelManager.cs",
+              "RelativeDocumentMoniker": "Assets\\Scripts\\Managers\\GameLevelManager.cs",
+              "ToolTip": "C:\\Users\\Lenovo\\Titan Roll\\Assets\\Scripts\\Managers\\GameLevelManager.cs",
+              "RelativeToolTip": "Assets\\Scripts\\Managers\\GameLevelManager.cs",
+              "ViewState": "AgIAAFIAAAAAAAAAAAA5wF8AAAAsAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-01-23T05:04:41.343Z"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
