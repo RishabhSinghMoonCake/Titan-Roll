@@ -80,9 +80,19 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -7511558181221131132, guid: b7848880555c77f45ac714ebd274c423,
         type: 3}
+      propertyPath: m_Materials.Array.size
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: -7511558181221131132, guid: b7848880555c77f45ac714ebd274c423,
+        type: 3}
       propertyPath: m_Materials.Array.data[0]
       value: 
-      objectReference: {fileID: 2100000, guid: fa6c45465cde56c4495f6d9109c80326, type: 2}
+      objectReference: {fileID: 2100000, guid: 9d15be33dd34c6147ade7ada3cf8522f, type: 2}
+    - target: {fileID: -7511558181221131132, guid: b7848880555c77f45ac714ebd274c423,
+        type: 3}
+      propertyPath: m_Materials.Array.data[1]
+      value: 
+      objectReference: {fileID: 2100000, guid: a58917feba709d24a97adc1cb18df09e, type: 2}
     - target: {fileID: 919132149155446097, guid: b7848880555c77f45ac714ebd274c423,
         type: 3}
       propertyPath: m_Name
@@ -91,5 +101,31 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: b7848880555c77f45ac714ebd274c423,
+        type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 6091156645842241723}
   m_SourcePrefab: {fileID: 100100000, guid: b7848880555c77f45ac714ebd274c423, type: 3}
+--- !u!1 &1939220343108472327 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: b7848880555c77f45ac714ebd274c423,
+    type: 3}
+  m_PrefabInstance: {fileID: 1596551843213488982}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &6091156645842241723
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1939220343108472327}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1825f86dea544914296c3a790cca8549, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  resistanceMomentum: 10
+  hardnessFactor: 0.2
+  fracturedPrefab: {fileID: 0}
+  dustEffectPrefab: {fileID: 0}

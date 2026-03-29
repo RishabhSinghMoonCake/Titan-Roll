@@ -21,6 +21,8 @@ public class ProceduralGenerator : MonoBehaviour
         public float curveFrequency = 0.2f;
         [Tooltip("Distance between each spawned prefab.")]
         public float spacing = 1f;
+        [Tooltip("Custom rotation")]
+        public Vector3 prefabRot = Vector3.zero;
     }
 
     [System.Serializable]
@@ -60,10 +62,9 @@ public class ProceduralGenerator : MonoBehaviour
 
             Vector3 worldPos = transform.TransformPoint(localStartPos + new Vector3(x, 0, z));
 
-            SpawnPrefab(sPatternSettings.bodyPrefab, worldPos, transform.rotation, container);
+            SpawnPrefab(sPatternSettings.bodyPrefab, worldPos, Quaternion.Euler(sPatternSettings.prefabRot), container);
         }
 
-        Debug.Log("S-Pattern Generated successfully with Prefab links!");
     }
 
     // ==========================================
