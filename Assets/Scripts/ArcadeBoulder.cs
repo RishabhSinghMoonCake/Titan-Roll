@@ -14,7 +14,6 @@ public class ArcadeBoulder : MonoBehaviour
 
     [Header("Steering Tuning")]
     public float steeringForce = 40f;    // How hard we push sideways
-    public float maxSteeringSpeed = 15f; // Cap sideways speed
     public float sideFriction = 5f;      // "Grip" (Higher = less drift/heavier feel)
     public float steeringDelay = 0.5f;   // Seconds to wait after launch before steering works
 
@@ -22,8 +21,7 @@ public class ArcadeBoulder : MonoBehaviour
     private bool isLaunched = false;
     private float currentSpeedKmh;
     private float timeSinceLaunch = 0f;
-
-    private float MaxStartLaunchSpeedMs;
+    private float maxStartLaunchSpeedMs;
 
     void Awake()
     {
@@ -33,37 +31,43 @@ public class ArcadeBoulder : MonoBehaviour
         rb.angularDrag = 0.05f;
         rb.interpolation = RigidbodyInterpolation.Interpolate;
         rb.collisionDetectionMode = CollisionDetectionMode.Continuous;
-        rb.mass = 50f;
+
+        // Removed rb.mass = 50f; 
+        // GameLevelManager now sets mass dynamically based on upgrades!
+
         rb.isKinematic = true;
     }
 
-    private void Start()
-    {
-        MaxStartLaunchSpeedMs = PlayerDataManager.Instance.GetTotalLaunchSpeed() / 3.6f;
-    }
-
-    public void Launch(float speedKmh)
+    /// <summary>
+    /// Called by GameLevelManager when the player taps the screen.
+    /// </summary>
+    public void Launch(float launchSpeedKmh)
     {
         isLaunched = true;
-        timeSinceLaunch = 0f; // Reset Timer
+        timeSinceLaunch = 0f;
         rb.isKinematic = false;
 
-        float speedMs = speedKmh / 3.6f;
+        float speedMs = launchSpeedKmh / 3.6f;
+        maxStartLaunchSpeedMs = speedMs;
+
+        // Slight upward angle for a nice pop off the launch pad
         Vector3 launchDir = (transform.forward + (Vector3.up * 0.15f)).normalized;
-        rb.velocity = launchDir * speedMs; // Use rb.velocity in Unity < 6
-        MaxStartLaunchSpeedMs = speedMs;
+        rb.velocity = launchDir * speedMs;
     }
 
-    // NEW: Called by GameLevelManager every frame
+    /// <summary>
+    /// Called by GameLevelManager every frame while launched.
+    /// </summary>
     public void Steer(float input)
     {
-        if (!isLaunched) return;
-        if (timeSinceLaunch < steeringDelay) return; // The Delay
+        if (!isLaunched || timeSinceLaunch < steeringDelay) return;
 
-        // 1. Apply Sideways Force (World Space X)
-        // We use ForceMode.Acceleration so Mass doesn't mess up the sensitivity
+        // Scale steering force based on current speed. 
+        // If we are moving very slow, steering is less effective.
+        float speedFactor = Mathf.InverseLerp(0, maxStartLaunchSpeedMs, rb.velocity.magnitude);
+
         Vector3 steerDir = Vector3.right * input * steeringForce;
-        rb.AddForce(steerDir * Mathf.InverseLerp(0,MaxStartLaunchSpeedMs,rb.velocity.magnitude), ForceMode.Acceleration);
+        rb.AddForce(steerDir * speedFactor, ForceMode.Acceleration);
     }
 
     void FixedUpdate()
@@ -71,24 +75,19 @@ public class ArcadeBoulder : MonoBehaviour
         if (!isLaunched) return;
 
         timeSinceLaunch += Time.fixedDeltaTime;
-        currentSpeedKmh = rb.velocity.magnitude * 3.6f; // Use rb.velocity
+        currentSpeedKmh = rb.velocity.magnitude * 3.6f;
 
         // 1. Gravity & Forward Logic
         rb.AddForce(Physics.gravity * gravityMultiplier, ForceMode.Acceleration);
         HandleSlopes();
 
         // 2. LATERAL FRICTION (The "Weight" Logic)
-        // We want to kill sideways velocity (X) but keep forward velocity (Z)
-        // This makes the steering feel "tight" instead of "floaty"
+        // Kills sideways velocity (X) but keeps forward velocity (Z)
         Vector3 localVel = transform.InverseTransformDirection(rb.velocity);
-
-        // Apply drag ONLY to the X axis (Sideways)
         float sidewaysDrag = -localVel.x * sideFriction;
-
-        // Apply back as World Force
         rb.AddForce(transform.right * sidewaysDrag, ForceMode.Acceleration);
 
-        // 3. Stop Logic
+        // 3. Stop Logic (Run ends if we are too slow after the initial launch window)
         if (currentSpeedKmh < brakingThreshold && timeSinceLaunch > 2.0f)
         {
             ApplyBraking();
@@ -100,65 +99,57 @@ public class ArcadeBoulder : MonoBehaviour
         if (Physics.Raycast(transform.position, Vector3.down, out RaycastHit hit, 2.0f))
         {
             Vector3 slopeDir = Vector3.ProjectOnPlane(transform.forward, hit.normal).normalized;
-            if (slopeDir.y < 0) rb.AddForce(slopeDir * slopeAcceleration, ForceMode.Acceleration);
-            else rb.AddForce(-rb.velocity.normalized * flatGroundDeceleration, ForceMode.Acceleration);
+
+            if (slopeDir.y < 0)
+                rb.AddForce(slopeDir * slopeAcceleration, ForceMode.Acceleration); // Downhill speedup
+            else
+                rb.AddForce(-rb.velocity.normalized * flatGroundDeceleration, ForceMode.Acceleration); // Flat/Uphill drag
         }
     }
 
     void ApplyBraking()
     {
         rb.AddForce(-rb.velocity.normalized * brakingForce, ForceMode.Acceleration);
+
         if (currentSpeedKmh < 1f)
         {
             isLaunched = false;
             rb.isKinematic = true;
-            Debug.Log("Run Finished");
+            Debug.Log("ArcadeBoulder: Run Finished smoothly.");
             OnRunFinished?.Invoke();
         }
     }
 
-    // Helper to get raw speed for momentum calc
-    public float GetCurrentSpeedMs()
-    {
-        return rb.velocity.magnitude;
-    }
+    // --- COLLISION UTILITIES ---
+
+    public float GetCurrentSpeedMs() => rb.velocity.magnitude;
 
     /// <summary>
-    /// Called when we smash through an object. 
-    /// Subtracts specific speed instantly but keeps momentum flowing.
+    /// Called by destructible objects when smashed.
     /// </summary>
     public void ApplyImpactSlowdown(float speedLossKmh)
     {
-        // 1. Calculate new speed
-        float currentSpeedKmh = rb.velocity.magnitude * 3.6f;
         float newSpeedKmh = currentSpeedKmh - speedLossKmh;
 
-        // 2. Safety Clamp
-        // Never drop below 5km/h on a break (so you don't get stuck inside the debris)
+        // Safety Clamp: Don't drop below 5km/h so we don't get stuck inside debris
         if (newSpeedKmh < 5f) newSpeedKmh = 5f;
 
-        // 3. Apply
-        Vector3 direction = rb.velocity.normalized;
-        rb.velocity = direction * (newSpeedKmh / 3.6f);
+        rb.velocity = rb.velocity.normalized * (newSpeedKmh / 3.6f);
     }
 
     /// <summary>
-    /// Called when we hit something too hard to break.
-    /// Acts like a solid wall collision.
+    /// Called by solid obstacles (walls, mountains).
     /// </summary>
     public void ApplyBonk()
     {
-        // 1. Stop dead
         rb.velocity = Vector3.zero;
         rb.angularVelocity = Vector3.zero;
 
-        // 2. Slight bounce back (Visual feedback)
+        // Slight bounce back visual feedback
         rb.AddForce(-transform.forward * 10f, ForceMode.Impulse);
 
-        // 3. End the run
         isLaunched = false;
-
-        Debug.Log("BONK! Run Failed.");
-        OnRunFinished?.Invoke(); // Trigger Game Over screen
+        Debug.Log("ArcadeBoulder: BONK! Hit a solid wall.");
+        OnRunFinished?.Invoke();
     }
 }

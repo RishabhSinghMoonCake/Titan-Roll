@@ -1,313 +1,196 @@
-using Cinemachine;
 using System.Collections;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
-
 [System.Serializable]
 public struct GoldTier
 {
-    public string tierName;      // e.g. "Bronze Sector"
-    public float endDistance;    // e.g. 500m
-    public float goldPerMeter;   // e.g. 1.0 (Base), 1.5 (Silver), 2.0 (Gold)
+    public float endDistance;
+    public float goldPerMeter;
 }
 
 public class GameLevelManager : MonoBehaviour
 {
-    public enum GameState { Idle, Aiming, Launched }
+    public enum GameState { Idle, Launched }
     public GameState currentState = GameState.Idle;
 
-    [Header("Cameras")]
-    public CinemachineVirtualCamera idleCam;
-    public CinemachineVirtualCamera launchCam;
-    public CinemachineVirtualCamera followCam;
-
-    [Header("References")]
-    //public TitanLauncher titanVisuals;
+    [Header("Core References")]
     public ArcadeBoulder arcadeBoulder;
-    public Transform boulderVisualMesh;
-
-    [Header("Settings")]
-    public float minPullToLaunch = 0.10f;
-
-    [Header("UI References (Optional)")]
     public TextMeshProUGUI goldText;
 
+    [Header("Boulder Visuals & Setup")]
+    public Transform visualHolder;       // Empty child object inside ArcadeBoulder
+    public Transform launchPadAnchor;    // Where the boulder rests
+    public GameObject[] skinPrefabs;     // Array of your ball skins
+
+    [Header("Boulder Math Settings")]
+    public float scalePerLevel = 0.05f;  // 5% size increase per level
+    public float massPerLevel = 10f;     // Added physical weight per level
+    public float baseColliderRadius = 0.5f;
+    public float baseLaunchSpeed = 140f;
+    public float speedPerStrengthLevel = 14f;
+
     [Header("Economy Configuration")]
-    [Tooltip("Define your zones here. Ensure they are sorted by distance!")]
-    public List<GoldTier> distanceTiers = new List<GoldTier>()
-    {
-        new GoldTier { tierName = "Zone 1", endDistance = 500f, goldPerMeter = 1.0f },
-        new GoldTier { tierName = "Zone 2", endDistance = 1500f, goldPerMeter = 2.0f },
-        new GoldTier { tierName = "Zone 3", endDistance = 3000f, goldPerMeter = 4.0f },
-        new GoldTier { tierName = "Infinity", endDistance = 99999f, goldPerMeter = 10.0f }
-    };
+    public List<GoldTier> distanceTiers;
 
-    [Header("End Run Settings")]
-    public float animationDelay = 2.5f;
+    [Header("Camera")]
+    public DynamicBoulderCamera dynamicCamera;
 
-    [Header("Scaling Settings")]
-    public float maxBoulderScale = 15f;
+    private GameObject _currentSkinInstance;
+    private int _currentSkinIndex = -1;
 
     private void Start()
     {
-        SwitchToCam(idleCam);
         currentState = GameState.Idle;
 
-        // Subscribe to events
-        InputManager.Instance.OnDragUpdate += HandleDragUpdate;
-        InputManager.Instance.OnDragEnd += HandleDragEnd;
+        if (InputManager.Instance != null)
+            InputManager.Instance.OnLaunchTap += HandleLaunchTap;
 
-        SyncStatsFromSave();
+        if (arcadeBoulder != null)
+            arcadeBoulder.OnRunFinished += StartEndRunSequence;
 
-        // Listen for the Boulder Stopping
-        arcadeBoulder.OnRunFinished += StartEndRunSequence;
+        UpdateBoulderVisualsAndStats();
+        UpdateUI();
     }
 
     private void Update()
     {
-        // --- STEERING LOGIC ---
-        // Only active when the ball is actually rolling
         if (currentState == GameState.Launched)
         {
-            // Get Combined Input (-1 to 1) from Touch or Joystick
-            float steerVal = InputManager.Instance.SteeringInput;
-
-            // Pass to Arcade Physics
-            arcadeBoulder.Steer(steerVal);
+            arcadeBoulder.Steer(InputManager.Instance.SteeringInput);
         }
     }
 
-    private void SyncStatsFromSave()
+    // --- UNIFIED BOULDER UPDATE ---
+
+    private void UpdateBoulderVisualsAndStats()
     {
         int massLevel = PlayerDataManager.Instance.data.massLevel;
 
-        // --- 1. THE DOUBLING LOGIC ---
-        // Every 5 levels, we double the size.
-        // Formula: 2 ^ (Level / 5)
-        // Level 1-4: Scale 1
-        // Level 5-9: Scale 2
-        // Level 10-14: Scale 4
-        // Level 15: Scale 8...
+        // 1. Calculate Size (e.g., Level 1 = 1.0, Level 2 = 1.05, Level 10 = 1.45)
+        float currentScale = 1.0f + ((massLevel - 1) * scalePerLevel);
+        arcadeBoulder.transform.localScale = Vector3.one * currentScale;
 
-        int sizeTier = massLevel / 5;
-        float doublingFactor = Mathf.Pow(1.3f, sizeTier);
+        // 2. Update Physical Mass (makes it hit harder/roll heavier)
+        Rigidbody rb = arcadeBoulder.GetComponent<Rigidbody>();
+        if (rb != null) rb.mass = 100f + ((massLevel - 1) * massPerLevel);
 
-        // We add a tiny linear bit (0.1 per level) so levels 2,3,4 still feel like progress
-        float linearFactor = (massLevel % 5) * 0.1f;
-
-        float finalScale = 1.0f * (doublingFactor + linearFactor);
-
-        // SAFETY CAP: Don't let it get larger than the mountain
-        finalScale = Mathf.Clamp(finalScale, 1.0f, maxBoulderScale);
-
-        if (boulderVisualMesh != null)
+        // 3. Anchor Position (prevents ground clipping as it grows)
+        if (launchPadAnchor != null)
         {
-            // Use LeanTween or regular scaling for smoothness
-            boulderVisualMesh.localScale = Vector3.one * finalScale;
-
-            // Adjust Collider (Optional: if your physics feels weird with big rocks)
-            // arcadeBoulder.GetComponent<SphereCollider>().radius = 0.5f * finalScale;
+            float currentRadius = baseColliderRadius * currentScale;
+            Vector3 anchorPos = launchPadAnchor.position;
+            arcadeBoulder.transform.position = new Vector3(anchorPos.x, anchorPos.y + currentRadius, anchorPos.z);
         }
 
-        Debug.Log($"Stats Synced | Level: {massLevel} | Scale: x{finalScale:F2}");
+        // 4. Skin Changing Logic (Changes every 5 levels)
+        // Level 1-4 = Index 0 | Level 5-9 = Index 1 | Level 10-14 = Index 2, etc.
+        int requiredSkinIndex = (massLevel - 1) / 5;
+
+        // Cap the index so we don't crash if they outlevel your available skins
+        requiredSkinIndex = Mathf.Clamp(requiredSkinIndex, 0, skinPrefabs.Length - 1);
+
+        if (_currentSkinIndex != requiredSkinIndex || _currentSkinInstance == null)
+        {
+            if (_currentSkinInstance != null) Destroy(_currentSkinInstance);
+
+            _currentSkinInstance = Instantiate(skinPrefabs[requiredSkinIndex] ? skinPrefabs[requiredSkinIndex]: skinPrefabs[0], visualHolder);
+            _currentSkinInstance.transform.localPosition = Vector3.zero;
+            _currentSkinInstance.transform.localRotation = Quaternion.identity;
+            _currentSkinInstance.transform.localScale = Vector3.one;
+
+            _currentSkinIndex = requiredSkinIndex;
+        }
+
+        // 5. Update Camera Distance
+        if (dynamicCamera != null)
+        {
+            dynamicCamera.UpdateCameraDistance(currentScale);
+        }
     }
 
-    private void FireBoulder(float pullPercentage)
-    {
-        currentState = GameState.Launched;
-
-        // 1. GET MAX SPEED (e.g., 148 km/h)
-        float maxSpeed = PlayerDataManager.Instance.GetTotalLaunchSpeed();
-
-        // 2. CALCULATE ACTUAL SPEED (Based on drag input 0.0 - 1.0)
-        float finalSpeed = maxSpeed * pullPercentage;
-
-        // 3. LAUNCH (Arcade Physics)
-        arcadeBoulder.Launch(finalSpeed);
-
-        // 4. JUICE
-        //titanVisuals.TriggerKick();
-        SwitchToCam(followCam);
-    }
+    // --- UI BUTTON CLICKS ---
 
     public void BuyMassUpgrade()
     {
         if (PlayerDataManager.Instance.TryBuyUpgrade("Mass"))
         {
-            int newLevel = PlayerDataManager.Instance.data.massLevel;
-
-            // Check Milestone: Is this a multiple of 5? (5, 10, 15...)
-            if (newLevel % 5 == 0)
-            {
-            }
-
-            SyncStatsFromSave(); // Apply size immediately
+            UpdateBoulderVisualsAndStats(); // Instantly apply size/mass/skin
+            UpdateUI();
         }
     }
 
     public void BuyStrengthUpgrade()
     {
-        if (PlayerDataManager.Instance.TryBuyUpgrade("Strength"))
-        {
-            int newLevel = PlayerDataManager.Instance.data.strengthLevel;
-
-            if (newLevel % 5 == 0)
-            {
-            }
-        }
+        if (PlayerDataManager.Instance.TryBuyUpgrade("Strength")) UpdateUI();
     }
 
     public void BuyGreedUpgrade()
     {
-        if (PlayerDataManager.Instance.TryBuyUpgrade("Greed"))
-        {
-            int newLevel = PlayerDataManager.Instance.data.greedLevel;
-
-            if (newLevel % 5 == 0)
-            {
-            }
-        }
+        if (PlayerDataManager.Instance.TryBuyUpgrade("Greed")) UpdateUI();
     }
-    // Simple UI refresher
+
     public void UpdateUI()
     {
         if (goldText != null)
+            goldText.text = "Gold: " + PlayerDataManager.Instance.data.gold.ToString("N0");
+    }
+
+    // --- LAUNCH & GAMEPLAY ---
+
+    private void HandleLaunchTap()
+    {
+        if (currentState == GameState.Idle) FireBoulder();
+    }
+
+    private void FireBoulder()
+    {
+        currentState = GameState.Launched;
+        int strengthLvl = PlayerDataManager.Instance.data.strengthLevel;
+        float launchSpeed = baseLaunchSpeed + ((strengthLvl - 1) * speedPerStrengthLevel);
+
+        arcadeBoulder.Launch(launchSpeed);
+    }
+
+    // --- END RUN LOGIC ---
+
+    private void StartEndRunSequence() => StartCoroutine(EndRunRoutine());
+
+    private IEnumerator EndRunRoutine()
+    {
+        currentState = GameState.Idle;
+
+        float finalDist = arcadeBoulder.transform.position.z;
+        float greedMult = 1.0f + ((PlayerDataManager.Instance.data.greedLevel - 1) * 0.05f);
+
+        // Calculate Gold
+        float remainingDist = finalDist;
+        float accumulatedGold = 0f;
+        float previousTierEnd = 0f;
+
+        foreach (GoldTier tier in distanceTiers)
         {
-            // Format large numbers (e.g., "1.2B")
-            double gold = PlayerDataManager.Instance.data.gold;
-            goldText.text = "Gold: " + gold.ToString("N0");
+            if (remainingDist <= 0) break;
+            float tierLength = tier.endDistance - previousTierEnd;
+            float distInTier = Mathf.Min(remainingDist, tierLength);
+            accumulatedGold += distInTier * tier.goldPerMeter;
+            remainingDist -= distInTier;
+            previousTierEnd = tier.endDistance;
         }
+
+        int goldEarned = Mathf.FloorToInt(accumulatedGold * greedMult);
+
+        yield return new WaitForSeconds(2.5f);
+
+        PlayerDataManager.Instance.AddGold(goldEarned);
+        SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
     }
 
     private void OnDestroy()
     {
-        if (InputManager.Instance != null)
-        {
-            InputManager.Instance.OnDragUpdate -= HandleDragUpdate;
-            InputManager.Instance.OnDragEnd -= HandleDragEnd;
-        }
-
-        if (arcadeBoulder != null)
-            arcadeBoulder.OnRunFinished -= StartEndRunSequence;
-    }
-
-    // --- LOGIC ---
-
-    private void HandleDragUpdate(float power)
-    {
-        // Only allow stretching if we are already in the "Aiming" mode
-        if (currentState == GameState.Aiming)
-        {
-            //titanVisuals.SetStretch(power);
-        }
-    }
-
-    private void HandleDragEnd(float power)
-    {
-        // LOGIC BRANCH: What state are we in?
-
-        if (currentState == GameState.Idle)
-        {
-            // IDLE PHASE: A tap happened.
-            // Switch to AIMING mode (Zoom in).
-            Debug.Log("Tap Detected: Switching to Aiming Mode");
-            currentState = GameState.Aiming;
-            SwitchToCam(launchCam);
-            return;
-        }
-
-        if (currentState == GameState.Aiming)
-        {
-            // AIMING PHASE: A release happened.
-            // Did they pull far enough?
-            if (power >= minPullToLaunch)
-            {
-                FireBoulder(power);
-            }
-            else
-            {
-                // They let go without pulling enough. 
-                // Just reset the leg, but STAY in Aiming mode (don't go back to Idle).
-                //titanVisuals.SetStretch(0f);
-            }
-        }
-    }
-
-    private void SwitchToCam(CinemachineVirtualCamera target)
-    {
-        idleCam.Priority = 0;
-        launchCam.Priority = 0;
-        followCam.Priority = 0;
-        target.Priority = 10;
-    }
-
-
-    // --- 1. THE CALCULATION LOGIC (Tax Bracket Style) ---
-
-    public int CalculateTotalGold(float totalDistance)
-    {
-        float remainingDistance = totalDistance;
-        float accumulatedGold = 0f;
-        float previousTierEnd = 0f;
-
-        // Get Player's Greed Multiplier (e.g. 1.2x)
-        float greedMult = PlayerDataManager.Instance.GetGoldMultiplier();
-
-        foreach (GoldTier tier in distanceTiers)
-        {
-            if (remainingDistance <= 0) break;
-
-            // How long is this specific tier? (e.g. 0 to 500 = 500m length)
-            float tierLength = tier.endDistance - previousTierEnd;
-
-            // How much of OUR distance falls into this tier?
-            float distanceInThisTier = Mathf.Min(remainingDistance, tierLength);
-
-            // Add Cash
-            accumulatedGold += distanceInThisTier * tier.goldPerMeter;
-
-            // Prepare for next loop
-            remainingDistance -= distanceInThisTier;
-            previousTierEnd = tier.endDistance;
-        }
-
-        // Apply global multiplier and return integer
-        return Mathf.FloorToInt(accumulatedGold * greedMult);
-    }
-
-    // --- 2. THE END SEQUENCE (Coroutine) ---
-
-    private void StartEndRunSequence()
-    {
-        StartCoroutine(EndRunRoutine());
-    }
-
-    private IEnumerator EndRunRoutine()
-    {
-        currentState = GameState.Idle; // Prevent input
-
-        // A. Calculate Earnings
-        // We use the Boulder's Z position as distance (assuming start is Z=0)
-        float finalDist = arcadeBoulder.transform.position.z;
-        int goldEarned = CalculateTotalGold(finalDist);
-
-        Debug.Log($"Run Over! Distance: {finalDist:F0}m | Gold: {goldEarned}");
-
-        // B. Trigger UI Animation (Placeholder)
-        // UIManager.Instance.ShowEndScreen(finalDist, goldEarned, animationDelay);
-        // Play "Coin Count Up" Sound Loop here
-
-        // C. Wait for "Juice" (The Delay)
-        yield return new WaitForSeconds(animationDelay);
-
-        // D. Save Data
-        PlayerDataManager.Instance.AddGold(goldEarned);
-
-        // E. Restart Scene
-        // Using "LoadScene" cleans up all physics/memory automatically
-        SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+        if (InputManager.Instance != null) InputManager.Instance.OnLaunchTap -= HandleLaunchTap;
+        if (arcadeBoulder != null) arcadeBoulder.OnRunFinished -= StartEndRunSequence;
     }
 }

@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.InputSystem.EnhancedTouch;
 using Touch = UnityEngine.InputSystem.EnhancedTouch.Touch;
 
@@ -7,23 +8,17 @@ public class InputManager : MonoBehaviour
 {
     public static InputManager Instance;
 
-    [Header("Launch Settings")]
-    public float dragDistanceForMaxPower = 400f;
-
     [Header("Steering Settings")]
     [Tooltip("How many pixels of drag = Full Steering (-1 to 1)")]
     public float dragSensitivity = 150f;
     public bool invertSteering = false;
 
     // --- EVENTS ---
-    public event Action OnDragStart;
-    public event Action<float> OnDragUpdate; // Launch Power
-    public event Action<float> OnDragEnd;
+    public event Action OnLaunchTap;
 
     // --- PUBLIC READ-ONLY ---
     public float SteeringInput { get; private set; } // -1 (Left) to 1 (Right)
 
-    private Vector2 _startTouchPosition;
     private Vector2 _lastFrameTouchPos;
     private bool _isInteracting;
 
@@ -56,35 +51,28 @@ public class InputManager : MonoBehaviour
     {
         if (Touch.activeTouches.Count > 1) return;
 
-        _isInteracting = true;
-        _startTouchPosition = finger.screenPosition;
-        _lastFrameTouchPos = finger.screenPosition; // Reset delta
+        // Ignore the tap if the user is touching a UI element (e.g., a button)
+        if (IsPointerOverUI(finger)) return;
 
-        OnDragStart?.Invoke();
+        _isInteracting = true;
+        _lastFrameTouchPos = finger.screenPosition;
+
+        // Trigger Launch
+        OnLaunchTap?.Invoke();
     }
 
     private void HandleFingerMove(Finger finger)
     {
         if (!_isInteracting || finger.index != 0) return;
 
-        // 1. LAUNCH LOGIC (Vertical)
-        float launchPower = CalculatePull(finger.screenPosition);
-        OnDragUpdate?.Invoke(launchPower);
-
-        // 2. STEERING LOGIC (Horizontal Drag Delta)
-        // We calculate how much the finger moved *this frame*
+        // STEERING LOGIC (Horizontal Drag Delta)
         float deltaX = finger.screenPosition.x - _lastFrameTouchPos.x;
-        _lastFrameTouchPos = finger.screenPosition; // Update for next frame
-
-        // Add to our current steering value (Accumulative Drag)
-        // Or use direct position relative to center?
-        // "Sled Surfers" style is usually Delta-based (Drag left to go left)
+        _lastFrameTouchPos = finger.screenPosition;
 
         float sensitivity = invertSteering ? -1f : 1f;
         float touchSteer = (deltaX / dragSensitivity) * sensitivity;
 
         // Combine Touch + Joystick
-        // We clamp it so you can't steer 200% speed
         SteeringInput = Mathf.Clamp(touchSteer + ExternalJoystickInput, -1f, 1f);
     }
 
@@ -92,19 +80,27 @@ public class InputManager : MonoBehaviour
     {
         if (!_isInteracting || finger.index != 0) return;
 
-        float finalPull = CalculatePull(finger.screenPosition);
         _isInteracting = false;
 
-        // Reset Steering on release (Optional - usually feels better for joystick)
+        // Reset Steering on release
         SteeringInput = 0f;
-
-        OnDragEnd?.Invoke(finalPull);
     }
 
-    private float CalculatePull(Vector2 currentPos)
+    // --- UI CHECK ---
+    private bool IsPointerOverUI(Finger finger)
     {
-        float verticalDrag = _startTouchPosition.y - currentPos.y;
-        if (verticalDrag < 0) verticalDrag = 0;
-        return Mathf.Clamp01(verticalDrag / dragDistanceForMaxPower);
+        if (EventSystem.current == null) return false;
+
+        // Check if the touch pointer is currently over a UI element
+        int pointerId = finger.currentTouch.touchId;
+
+        if (EventSystem.current.IsPointerOverGameObject(pointerId))
+            return true;
+
+        // Fallback for editor/mouse clicks
+        if (EventSystem.current.IsPointerOverGameObject(-1))
+            return true;
+
+        return false;
     }
 }

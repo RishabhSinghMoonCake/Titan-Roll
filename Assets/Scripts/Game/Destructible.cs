@@ -25,7 +25,7 @@ public class Destructible : MonoBehaviour
             if (boulder == null) return;
 
             // 1. GATHER STATS
-            float playerMass = PlayerDataManager.Instance.GetTotalMass();
+            float playerMass = other.attachedRigidbody ? other.attachedRigidbody.mass : 50f;
             float playerSpeedMs = boulder.GetCurrentSpeedMs();
             float impactMomentum = playerMass * playerSpeedMs;
 

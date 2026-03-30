@@ -8,27 +8,11 @@ public class PlayerDataManager : MonoBehaviour
     public PlayerData data;
     private string saveFilePath;
 
-    // --- NEW GEOMETRIC CONFIG ---
-
-    // 1. MASS (The Rock)
-    
-    private const float MASS_GROWTH_FACTOR = 100f;
-    private const float BASE_MASS = 100f;
-
-    private const float BASE_SPEED_KMH = 140f;
-    private const float SPEED_PER_LEVEL = 14.0f;
-
-    private const float BASE_GREED_MULTIPLIER = 1.0f;
-    private const float GREED_PER_LEVEL = 0.05f;
-
-    // 3. ECONOMY (The Wall)
-    // 35% growth makes Level 50 prohibitively expensive (~$500M)
-    private const float COST_GROWTH_FACTOR = 1.35f;
-
-    // Base Costs
-    private const int COST_BASE_MASS = 50;
-    private const int COST_BASE_STRENGTH = 50;
-    private const int COST_BASE_GREED = 100;
+    [Header("Economy Settings")]
+    public float costGrowthFactor = 1.35f;
+    public int baseMassCost = 50;
+    public int baseStrengthCost = 50;
+    public int baseGreedCost = 100;
 
     void Awake()
     {
@@ -56,7 +40,7 @@ public class PlayerDataManager : MonoBehaviour
         }
         else
         {
-            data = new PlayerData(); // Starts with 1 Billion for testing
+            data = new PlayerData();
             Save();
         }
     }
@@ -67,48 +51,27 @@ public class PlayerDataManager : MonoBehaviour
         Save();
     }
 
-    // --- NEW MATH METHODS ---
-
-    public float GetTotalMass()
-    {
-        return BASE_MASS + ((data.massLevel - 1) * MASS_GROWTH_FACTOR);
-    }
-
-    public float GetTotalLaunchSpeed()
-    {
-        // Formula: 60 + (Level * 2)
-        return BASE_SPEED_KMH + ((data.strengthLevel - 1) * SPEED_PER_LEVEL);
-    }
-
-    public float GetGoldMultiplier()
-    {
-        // Formula: 1.0 + (Level * 0.05)
-        return BASE_GREED_MULTIPLIER + ((data.greedLevel - 1) * GREED_PER_LEVEL);
-    }
+    // --- MATH ---
 
     public double GetUpgradeCost(string type)
     {
-        int level = 0;
-        int baseCost = 0;
-
-        switch (type)
+        int level = type switch
         {
-            case "Mass":
-                level = data.massLevel;
-                baseCost = COST_BASE_MASS;
-                break;
-            case "Strength":
-                level = data.strengthLevel;
-                baseCost = COST_BASE_STRENGTH;
-                break;
-            case "Greed":
-                level = data.greedLevel;
-                baseCost = COST_BASE_GREED;
-                break;
-        }
+            "Mass" => data.massLevel,
+            "Strength" => data.strengthLevel,
+            "Greed" => data.greedLevel,
+            _ => 1
+        };
 
-        // Geometric Price: Base * (1.35 ^ Level)
-        return baseCost * Math.Pow(COST_GROWTH_FACTOR, level);
+        int baseCost = type switch
+        {
+            "Mass" => baseMassCost,
+            "Strength" => baseStrengthCost,
+            "Greed" => baseGreedCost,
+            _ => 100
+        };
+
+        return baseCost * Math.Pow(costGrowthFactor, level);
     }
 
     public bool TryBuyUpgrade(string type)
