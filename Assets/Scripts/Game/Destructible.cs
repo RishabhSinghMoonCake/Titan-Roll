@@ -19,7 +19,7 @@ public class Destructible : MonoBehaviour
     {
         if (isBroken) return;
 
-        if (other.CompareTag("Player"))
+        if (other.CompareTag("Boulder"))
         {
             ArcadeBoulder boulder = other.GetComponent<ArcadeBoulder>();
             if (boulder == null) return;
@@ -95,6 +95,6 @@ public class Destructible : MonoBehaviour
         // Original object is solid geometry, just disable it (or Destroy if not pooled)
         // Since solid objects are usually part of the Map Segments, they get destroyed 
         // when the map segment is destroyed. So just turning off renderer/collider is safer.
-        gameObject.SetActive(false);
+        Destroy(gameObject);
     }
 }

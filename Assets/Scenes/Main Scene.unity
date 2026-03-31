@@ -11660,7 +11660,7 @@ GameObject:
   - component: {fileID: 1039256082}
   m_Layer: 0
   m_Name: Ball
-  m_TagString: Untagged
+  m_TagString: Boulder
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -15000,7 +15000,7 @@ PrefabInstance:
     - target: {fileID: 7129156858279027943, guid: a42676f730c2a654aa6040c7d4bf15ab,
         type: 3}
       propertyPath: m_LocalPosition.x
-      value: 0
+      value: 11
       objectReference: {fileID: 0}
     - target: {fileID: 7129156858279027943, guid: a42676f730c2a654aa6040c7d4bf15ab,
         type: 3}
@@ -15010,7 +15010,7 @@ PrefabInstance:
     - target: {fileID: 7129156858279027943, guid: a42676f730c2a654aa6040c7d4bf15ab,
         type: 3}
       propertyPath: m_LocalPosition.z
-      value: 116.9
+      value: 165
       objectReference: {fileID: 0}
     - target: {fileID: 7129156858279027943, guid: a42676f730c2a654aa6040c7d4bf15ab,
         type: 3}
@@ -24224,7 +24224,7 @@ PrefabInstance:
     - target: {fileID: 8317265700229443676, guid: 4dad2e896f39fce4f90b9ac30d712fa7,
         type: 3}
       propertyPath: m_LocalPosition.x
-      value: -22.8
+      value: -11
       objectReference: {fileID: 0}
     - target: {fileID: 8317265700229443676, guid: 4dad2e896f39fce4f90b9ac30d712fa7,
         type: 3}
@@ -24234,7 +24234,7 @@ PrefabInstance:
     - target: {fileID: 8317265700229443676, guid: 4dad2e896f39fce4f90b9ac30d712fa7,
         type: 3}
       propertyPath: m_LocalPosition.z
-      value: 166.1
+      value: 165
       objectReference: {fileID: 0}
     - target: {fileID: 8317265700229443676, guid: 4dad2e896f39fce4f90b9ac30d712fa7,
         type: 3}

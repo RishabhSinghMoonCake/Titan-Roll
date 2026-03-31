@@ -20,3 +20,16 @@ UserSettings/
 
 .DS_Store
 Thumbs.db
+
+MemoryCaptures/
+Assets/AssetStoreTools*
+*.coverage
+*.coveragexml
+
+*.keystore
+*.jks
+*.apk
+*.aab
+*.unitypackage
+.vscode/
+sysinfo.txt
