@@ -1,5 +1,36 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
+--- !u!1 &4484818725306045622
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1438218018374180847}
+  m_Layer: 0
+  m_Name: WeaponSocket
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1438218018374180847
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4484818725306045622}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0.8241262, y: 0, z: 0, w: 0.56640637}
+  m_LocalPosition: {x: 0.025, y: 0.052, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 9130605088477873026}
+  m_LocalEulerAnglesHint: {x: -111, y: 0, z: 0}
 --- !u!1001 &2026513060666041931
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -75,6 +106,46 @@ PrefabInstance:
       objectReference: {fileID: 9100000, guid: 20329fa2e501563469578b8b934f129c, type: 2}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
-    m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedGameObjects:
+    - targetCorrespondingSourceObject: {fileID: -2113892365270161975, guid: aaeb2b895bbdf0c4da87617ba5508a39,
+        type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1438218018374180847}
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: aaeb2b895bbdf0c4da87617ba5508a39,
+        type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 5918490672686596873}
   m_SourcePrefab: {fileID: 100100000, guid: aaeb2b895bbdf0c4da87617ba5508a39, type: 3}
+--- !u!1 &1215680759356807962 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: aaeb2b895bbdf0c4da87617ba5508a39,
+    type: 3}
+  m_PrefabInstance: {fileID: 2026513060666041931}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &5918490672686596873
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1215680759356807962}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8507e5bfc30ca464683194e8c43c111c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  skinAnimator: {fileID: 5581379741529725914}
+  weaponSocket: {fileID: 1438218018374180847}
+--- !u!95 &5581379741529725914 stripped
+Animator:
+  m_CorrespondingSourceObject: {fileID: 5866666021909216657, guid: aaeb2b895bbdf0c4da87617ba5508a39,
+    type: 3}
+  m_PrefabInstance: {fileID: 2026513060666041931}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &9130605088477873026 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: -2113892365270161975, guid: aaeb2b895bbdf0c4da87617ba5508a39,
+    type: 3}
+  m_PrefabInstance: {fileID: 2026513060666041931}
+  m_PrefabAsset: {fileID: 0}

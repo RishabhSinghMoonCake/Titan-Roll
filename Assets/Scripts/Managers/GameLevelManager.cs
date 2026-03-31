@@ -17,9 +17,15 @@ public class GameLevelManager : MonoBehaviour
     public enum GameState { Idle, Launched }
     public GameState currentState = GameState.Idle;
 
+    public static GameLevelManager Instance;
+
     [Header("Core References")]
     public ArcadeBoulder arcadeBoulder;
     public TextMeshProUGUI goldText;
+
+    [Header("Sub-Managers")]
+    [Tooltip("Reference to the new manager handling the character skins")]
+    public CharacterSkinManager characterSkinManager;
 
     [Header("Boulder Visuals & Setup")]
     public Transform visualHolder;       // Empty child object inside ArcadeBoulder
@@ -42,8 +48,6 @@ public class GameLevelManager : MonoBehaviour
     private GameObject _currentSkinInstance;
     private int _currentSkinIndex = -1;
 
-    public static GameLevelManager Instance;
-
     private void Awake()
     {
         if (Instance == null) Instance = this;
@@ -54,8 +58,8 @@ public class GameLevelManager : MonoBehaviour
     {
         currentState = GameState.Idle;
 
-        if (InputManager.Instance != null)
-            InputManager.Instance.OnLaunchTap += HandleLaunchTap;
+        // Note: We REMOVED the OnLaunchTap subscription from here. 
+        // LaunchSequenceManager handles the initial taps and minigame now.
 
         if (arcadeBoulder != null)
             arcadeBoulder.OnRunFinished += StartEndRunSequence;
@@ -66,10 +70,17 @@ public class GameLevelManager : MonoBehaviour
 
     private void Update()
     {
+        // Only allow steering if the LaunchSequenceManager told us the slap finished
         if (currentState == GameState.Launched)
         {
             arcadeBoulder.Steer(InputManager.Instance.SteeringInput);
         }
+    }
+
+    // --- CALLED BY LAUNCH SEQUENCE MANAGER ---
+    public void SetStateToLaunched()
+    {
+        currentState = GameState.Launched;
     }
 
     // --- UNIFIED BOULDER UPDATE ---
@@ -78,17 +89,17 @@ public class GameLevelManager : MonoBehaviour
     {
         int massLevel = PlayerDataManager.Instance.data.massLevel;
 
-        // 1. Calculate Size (e.g., Level 1 = 1.0, Level 2 = 1.05, Level 10 = 1.45)
+        // 1. Calculate Size
         float currentScale = 1.0f + ((massLevel - 1) * scalePerLevel);
         arcadeBoulder.transform.localScale = Vector3.one * currentScale;
 
-        // 2. Update Physical Mass (makes it hit harder/roll heavier)
+        // 2. Update Physical Mass
         Rigidbody rb = arcadeBoulder.GetComponent<Rigidbody>();
-        float newMass = 100f + ((massLevel - 1) * massPerLevel); // Base mass of 100 + added mass per level
+        float newMass = 100f + ((massLevel - 1) * massPerLevel);
         if (rb != null) rb.mass = newMass;
         if (InputManager.Instance != null) InputManager.Instance.currentBoulderMass = newMass;
 
-        // 3. Anchor Position (prevents ground clipping as it grows)
+        // 3. Anchor Position
         if (launchPadAnchor != null)
         {
             float currentRadius = baseColliderRadius * currentScale;
@@ -96,18 +107,15 @@ public class GameLevelManager : MonoBehaviour
             arcadeBoulder.transform.position = new Vector3(anchorPos.x, anchorPos.y + currentRadius, anchorPos.z);
         }
 
-        // 4. Skin Changing Logic (Changes every 5 levels)
-        // Level 1-4 = Index 0 | Level 5-9 = Index 1 | Level 10-14 = Index 2, etc.
+        // 4. Skin Changing Logic
         int requiredSkinIndex = (massLevel - 1) / 5;
-
-        // Cap the index so we don't crash if they outlevel your available skins
         requiredSkinIndex = Mathf.Clamp(requiredSkinIndex, 0, skinPrefabs.Length - 1);
 
         if (_currentSkinIndex != requiredSkinIndex || _currentSkinInstance == null)
         {
             if (_currentSkinInstance != null) Destroy(_currentSkinInstance);
 
-            _currentSkinInstance = Instantiate(skinPrefabs[requiredSkinIndex] ? skinPrefabs[requiredSkinIndex]: skinPrefabs[0], visualHolder);
+            _currentSkinInstance = Instantiate(skinPrefabs[requiredSkinIndex] ? skinPrefabs[requiredSkinIndex] : skinPrefabs[0], visualHolder);
             _currentSkinInstance.transform.localPosition = Vector3.zero;
             _currentSkinInstance.transform.localRotation = Quaternion.identity;
             _currentSkinInstance.transform.localScale = Vector3.one;
@@ -115,7 +123,14 @@ public class GameLevelManager : MonoBehaviour
             _currentSkinIndex = requiredSkinIndex;
         }
 
-        // 5. Update Camera Distance
+        // 5. Update Character Skin & Hand Socket
+        if (characterSkinManager != null)
+        {
+            // Equip skin 0 (Can be tied to PlayerData later!)
+            characterSkinManager.EquipCharacterSkin(0);
+        }
+
+        // 6. Update Camera Distance
         if (dynamicCamera != null)
         {
             dynamicCamera.UpdateCameraDistance(currentScale);
@@ -149,24 +164,9 @@ public class GameLevelManager : MonoBehaviour
             goldText.text = "Gold: " + PlayerDataManager.Instance.data.gold.ToString("N0");
     }
 
-    // --- LAUNCH & GAMEPLAY ---
+    // --- LAUNCH CALCULATION ---
 
-    private void HandleLaunchTap()
-    {
-        if (currentState == GameState.Idle) FireBoulder();
-    }
-
-    private void FireBoulder()
-    {
-        currentState = GameState.Launched;
-        
-        float launchSpeed = GetTotalLaunchSpeed();
-
-        arcadeBoulder.Launch(launchSpeed);
-
-        if (dynamicCamera != null) dynamicCamera.TriggerLaunchSequence();
-    }
-
+    // LaunchSequenceManager will call this to figure out the base speed before applying the minigame multiplier
     public float GetTotalLaunchSpeed()
     {
         int strengthLvl = PlayerDataManager.Instance.data.strengthLevel;
@@ -209,7 +209,7 @@ public class GameLevelManager : MonoBehaviour
 
     private void OnDestroy()
     {
-        if (InputManager.Instance != null) InputManager.Instance.OnLaunchTap -= HandleLaunchTap;
+        // Removed InputManager un-subscribing since it's gone from this script
         if (arcadeBoulder != null) arcadeBoulder.OnRunFinished -= StartEndRunSequence;
     }
 }
