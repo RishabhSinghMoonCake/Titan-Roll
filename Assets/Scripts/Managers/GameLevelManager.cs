@@ -152,6 +152,8 @@ public class GameLevelManager : MonoBehaviour
         float launchSpeed = baseLaunchSpeed + ((strengthLvl - 1) * speedPerStrengthLevel);
 
         arcadeBoulder.Launch(launchSpeed);
+
+        if (dynamicCamera != null) dynamicCamera.TriggerLaunchSequence();
     }
 
     // --- END RUN LOGIC ---
