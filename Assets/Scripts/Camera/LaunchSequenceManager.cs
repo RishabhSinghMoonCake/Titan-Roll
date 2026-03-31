@@ -54,7 +54,7 @@ public class LaunchSequenceManager : MonoBehaviour
     {
         // --- 1. IDLE STATE ---
         CutToCamera(vcamIdle);
-        timingMinigamePanel.SetActive(false);
+        if (timingMinigamePanel != null) timingMinigamePanel.SetActive(false);
         AlignCharacterToBoulder();
 
         // Wait for the player to tap the screen to start the sequence
@@ -67,7 +67,8 @@ public class LaunchSequenceManager : MonoBehaviour
         yield return StartCoroutine(FlyWeaponToHand());
 
 
-        // --- 3. TIMING MINIGAME ---
+        // --- 3. TIMING MINIGAME (DISABLED FOR NOW) ---
+        /*
         CutToCamera(vcamMinigame);
         timingMinigamePanel.SetActive(true);
 
@@ -87,6 +88,10 @@ public class LaunchSequenceManager : MonoBehaviour
         _timingResult = 1f - (distanceFromCenter * 2f); // Results in a 0.0 to 1.0 multiplier
 
         timingMinigamePanel.SetActive(false);
+        */
+
+        // TEMPORARY: Force 100% Perfect Timing for the single-tap launch
+        _timingResult = 1f;
 
 
         // --- 4. THE SLAP ANIMATION ---
