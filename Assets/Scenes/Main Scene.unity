@@ -2048,7 +2048,7 @@ MonoBehaviour:
   scalePerLevel: 0.05
   massPerLevel: 10
   baseColliderRadius: 0.5
-  baseLaunchSpeed: 140
+  baseLaunchSpeed: 100
   speedPerStrengthLevel: 14
   distanceTiers:
   - endDistance: 500
@@ -8039,7 +8039,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 100, y: 100, z: 100}
+  m_LocalScale: {x: 1000, y: 1000, z: 1000}
   m_ConstrainProportionsScale: 1
   m_Children: []
   m_Father: {fileID: 0}
@@ -10294,8 +10294,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 661ba0006bd460144ac2d7f56d87f818, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  dragSensitivity: 150
+  joystickRadius: 250
   invertSteering: 0
+  baseSteeringSmoothness: 1
+  massEffectWeight: 0.01
+  currentBoulderMass: 100
 --- !u!4 &883576542
 Transform:
   m_ObjectHideFlags: 0
@@ -11691,10 +11694,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   gravityMultiplier: 2.5
-  slopeAcceleration: 20
-  flatGroundDeceleration: 1.5
-  brakingThreshold: 10
-  brakingForce: 15
+  flatGroundDeceleration: 8
+  brakingThreshold: 15
+  brakingForce: 25
   steeringForce: 40
   sideFriction: 5
   steeringDelay: 0.5
@@ -11732,7 +11734,7 @@ SphereCollider:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1039256077}
-  m_Material: {fileID: 0}
+  m_Material: {fileID: 13400000, guid: 051d945b24ec89e4a8c4414d9f614a32, type: 2}
   m_IncludeLayers:
     serializedVersion: 2
     m_Bits: 0

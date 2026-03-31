@@ -75,7 +75,9 @@ public class GameLevelManager : MonoBehaviour
 
         // 2. Update Physical Mass (makes it hit harder/roll heavier)
         Rigidbody rb = arcadeBoulder.GetComponent<Rigidbody>();
-        if (rb != null) rb.mass = 100f + ((massLevel - 1) * massPerLevel);
+        float newMass = 100f + ((massLevel - 1) * massPerLevel); // Base mass of 100 + added mass per level
+        if (rb != null) rb.mass = newMass;
+        if (InputManager.Instance != null) InputManager.Instance.currentBoulderMass = newMass;
 
         // 3. Anchor Position (prevents ground clipping as it grows)
         if (launchPadAnchor != null)

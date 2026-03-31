@@ -7,12 +7,16 @@
       "RelativeMoniker": "D:0:0:{EEF9518D-933C-6196-BBA6-078A67329141}|Assembly-CSharp.csproj|solutionrelative:assets\\scripts\\managers\\gamelevelmanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{EEF9518D-933C-6196-BBA6-078A67329141}|Assembly-CSharp.csproj|C:\\Users\\Lenovo\\Titan Roll\\assets\\scripts\\camera\\dynamicbouldercamera.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{EEF9518D-933C-6196-BBA6-078A67329141}|Assembly-CSharp.csproj|solutionrelative:assets\\scripts\\camera\\dynamicbouldercamera.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{EEF9518D-933C-6196-BBA6-078A67329141}|Assembly-CSharp.csproj|C:\\Users\\Lenovo\\Titan Roll\\assets\\scripts\\managers\\inputmanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{EEF9518D-933C-6196-BBA6-078A67329141}|Assembly-CSharp.csproj|solutionrelative:assets\\scripts\\managers\\inputmanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{EEF9518D-933C-6196-BBA6-078A67329141}|Assembly-CSharp.csproj|C:\\Users\\Lenovo\\Titan Roll\\assets\\scripts\\arcadeboulder.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{EEF9518D-933C-6196-BBA6-078A67329141}|Assembly-CSharp.csproj|solutionrelative:assets\\scripts\\arcadeboulder.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{EEF9518D-933C-6196-BBA6-078A67329141}|Assembly-CSharp.csproj|C:\\Users\\Lenovo\\Titan Roll\\assets\\scripts\\camera\\dynamicbouldercamera.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{EEF9518D-933C-6196-BBA6-078A67329141}|Assembly-CSharp.csproj|solutionrelative:assets\\scripts\\camera\\dynamicbouldercamera.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{EEF9518D-933C-6196-BBA6-078A67329141}|Assembly-CSharp.csproj|c:\\users\\lenovo\\titan roll\\assets\\scripts\\camera\\visualroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
@@ -29,10 +33,6 @@
     {
       "AbsoluteMoniker": "D:0:0:{EEF9518D-933C-6196-BBA6-078A67329141}|Assembly-CSharp.csproj|C:\\Users\\Lenovo\\Titan Roll\\assets\\scripts\\managers\\boulderskinmanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{EEF9518D-933C-6196-BBA6-078A67329141}|Assembly-CSharp.csproj|solutionrelative:assets\\scripts\\managers\\boulderskinmanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{EEF9518D-933C-6196-BBA6-078A67329141}|Assembly-CSharp.csproj|C:\\Users\\Lenovo\\Titan Roll\\assets\\scripts\\managers\\inputmanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{EEF9518D-933C-6196-BBA6-078A67329141}|Assembly-CSharp.csproj|solutionrelative:assets\\scripts\\managers\\inputmanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{EEF9518D-933C-6196-BBA6-078A67329141}|Assembly-CSharp.csproj|C:\\Users\\Lenovo\\Titan Roll\\assets\\scripts\\managers\\playerdata.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
@@ -78,11 +78,11 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 8,
+          "SelectedChildIndex": 7,
           "Children": [
             {
               "$type": "Document",
-              "DocumentIndex": 3,
+              "DocumentIndex": 4,
               "Title": "VisualRoller.cs",
               "DocumentMoniker": "C:\\Users\\Lenovo\\Titan Roll\\Assets\\Scripts\\Camera\\VisualRoller.cs",
               "RelativeDocumentMoniker": "Assets\\Scripts\\Camera\\VisualRoller.cs",
@@ -95,28 +95,16 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 1,
+              "DocumentIndex": 3,
               "Title": "DynamicBoulderCamera.cs",
               "DocumentMoniker": "C:\\Users\\Lenovo\\Titan Roll\\Assets\\Scripts\\Camera\\DynamicBoulderCamera.cs",
               "RelativeDocumentMoniker": "Assets\\Scripts\\Camera\\DynamicBoulderCamera.cs",
               "ToolTip": "C:\\Users\\Lenovo\\Titan Roll\\Assets\\Scripts\\Camera\\DynamicBoulderCamera.cs",
               "RelativeToolTip": "Assets\\Scripts\\Camera\\DynamicBoulderCamera.cs",
-              "ViewState": "AgIAAEwAAAAAAAAAAAAAwGsAAAABAAAAAAAAAA==",
+              "ViewState": "AgIAAG0AAAAAAAAAAAAAwIwAAAABAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2026-03-30T18:32:08.037Z",
               "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 6,
-              "Title": "BoulderSkinManager.cs",
-              "DocumentMoniker": "C:\\Users\\Lenovo\\Titan Roll\\Assets\\Scripts\\Managers\\BoulderSkinManager.cs",
-              "RelativeDocumentMoniker": "Assets\\Scripts\\Managers\\BoulderSkinManager.cs",
-              "ToolTip": "C:\\Users\\Lenovo\\Titan Roll\\Assets\\Scripts\\Managers\\BoulderSkinManager.cs",
-              "RelativeToolTip": "Assets\\Scripts\\Managers\\BoulderSkinManager.cs",
-              "ViewState": "AgIAAAYAAAAAAAAAAAAAwCUAAAABAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-03-30T18:04:21.078Z"
             },
             {
               "$type": "Document",
@@ -132,7 +120,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 4,
+              "DocumentIndex": 5,
               "Title": "Destructible.cs",
               "DocumentMoniker": "C:\\Users\\Lenovo\\Titan Roll\\Assets\\Scripts\\Game\\Destructible.cs",
               "RelativeDocumentMoniker": "Assets\\Scripts\\Game\\Destructible.cs",
@@ -150,14 +138,14 @@
               "RelativeDocumentMoniker": "Assets\\Scripts\\ArcadeBoulder.cs",
               "ToolTip": "C:\\Users\\Lenovo\\Titan Roll\\Assets\\Scripts\\ArcadeBoulder.cs",
               "RelativeToolTip": "Assets\\Scripts\\ArcadeBoulder.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAUwJoAAAABAAAAAAAAAA==",
+              "ViewState": "AgIAAGYAAAAAAAAAAAAAwHIAAAAFAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2026-01-26T07:48:52.042Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 5,
+              "DocumentIndex": 6,
               "Title": "PlayerDataManager.cs",
               "DocumentMoniker": "C:\\Users\\Lenovo\\Titan Roll\\Assets\\Scripts\\Managers\\PlayerDataManager.cs",
               "RelativeDocumentMoniker": "Assets\\Scripts\\Managers\\PlayerDataManager.cs",
@@ -187,22 +175,35 @@
               "RelativeDocumentMoniker": "Assets\\Scripts\\Managers\\GameLevelManager.cs",
               "ToolTip": "C:\\Users\\Lenovo\\Titan Roll\\Assets\\Scripts\\Managers\\GameLevelManager.cs",
               "RelativeToolTip": "Assets\\Scripts\\Managers\\GameLevelManager.cs",
-              "ViewState": "AgIAAIgAAAAAAAAAAAAkwJsAAABJAAAAAAAAAA==",
+              "ViewState": "AgIAAEAAAAAAAAAAAAAkwE0AAABrAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2026-01-23T05:04:41.343Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 7,
+              "DocumentIndex": 1,
               "Title": "InputManager.cs",
               "DocumentMoniker": "C:\\Users\\Lenovo\\Titan Roll\\Assets\\Scripts\\Managers\\InputManager.cs",
               "RelativeDocumentMoniker": "Assets\\Scripts\\Managers\\InputManager.cs",
               "ToolTip": "C:\\Users\\Lenovo\\Titan Roll\\Assets\\Scripts\\Managers\\InputManager.cs",
               "RelativeToolTip": "Assets\\Scripts\\Managers\\InputManager.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAGkAAAABAAAAAAAAAA==",
+              "ViewState": "AgIAAGQAAAAAAAAAAAAAwIMAAAABAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-01-23T05:10:29.694Z"
+              "WhenOpened": "2026-01-23T05:10:29.694Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 7,
+              "Title": "BoulderSkinManager.cs",
+              "DocumentMoniker": "C:\\Users\\Lenovo\\Titan Roll\\Assets\\Scripts\\Managers\\BoulderSkinManager.cs",
+              "RelativeDocumentMoniker": "Assets\\Scripts\\Managers\\BoulderSkinManager.cs",
+              "ToolTip": "C:\\Users\\Lenovo\\Titan Roll\\Assets\\Scripts\\Managers\\BoulderSkinManager.cs",
+              "RelativeToolTip": "Assets\\Scripts\\Managers\\BoulderSkinManager.cs",
+              "ViewState": "AgIAAAYAAAAAAAAAAAAAwCUAAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-03-30T18:04:21.078Z"
             },
             {
               "$type": "Document",

@@ -8,10 +8,19 @@ public class InputManager : MonoBehaviour
 {
     public static InputManager Instance;
 
-    [Header("Steering Settings")]
-    [Tooltip("How many pixels of drag = Full Steering (-1 to 1)")]
-    public float dragSensitivity = 150f;
+    [Header("Joystick Settings")]
+    [Tooltip("Distance in pixels from the initial tap to reach full 100% steering")]
+    public float joystickRadius = 250f;
     public bool invertSteering = false;
+
+    [Header("Smoothness & Mass Physics")]
+    [Tooltip("Base speed at which the boulder responds to your steering")]
+    public float baseSteeringSmoothness = 10f;
+    [Tooltip("How much the boulder's mass slows down steering (Higher = Harder to move heavy boulders)")]
+    public float massEffectWeight = 0.01f;
+
+    // Set this from GameLevelManager whenever the player buys a size/mass upgrade
+    [HideInInspector] public float currentBoulderMass = 100f;
 
     // --- EVENTS ---
     public event Action OnLaunchTap;
@@ -19,7 +28,9 @@ public class InputManager : MonoBehaviour
     // --- PUBLIC READ-ONLY ---
     public float SteeringInput { get; private set; } // -1 (Left) to 1 (Right)
 
-    private Vector2 _lastFrameTouchPos;
+    // --- PRIVATE STATE ---
+    private Vector2 _joystickCenter;
+    private float _targetSteering;
     private bool _isInteracting;
 
     // External Input (Joystick) can write to this
@@ -47,6 +58,19 @@ public class InputManager : MonoBehaviour
         EnhancedTouchSupport.Disable();
     }
 
+    private void Update()
+    {
+        // 1. Calculate dynamic smoothness based on mass
+        // As mass increases, the divisor gets larger, making the smoothness slower/heavier
+        float dynamicSmoothness = baseSteeringSmoothness / (1f + (currentBoulderMass * massEffectWeight));
+
+        // 2. Combine our touch target with any external joystick input
+        float finalTarget = Mathf.Clamp(_targetSteering + ExternalJoystickInput, -1f, 1f);
+
+        // 3. Smoothly interpolate the actual steering towards the target
+        SteeringInput = Mathf.Lerp(SteeringInput, finalTarget, Time.deltaTime * dynamicSmoothness);
+    }
+
     private void HandleFingerDown(Finger finger)
     {
         if (Touch.activeTouches.Count > 1) return;
@@ -55,7 +79,10 @@ public class InputManager : MonoBehaviour
         if (IsPointerOverUI(finger)) return;
 
         _isInteracting = true;
-        _lastFrameTouchPos = finger.screenPosition;
+
+        // Anchor the center of our virtual joystick
+        _joystickCenter = finger.screenPosition;
+        _targetSteering = 0f;
 
         // Trigger Launch
         OnLaunchTap?.Invoke();
@@ -65,15 +92,16 @@ public class InputManager : MonoBehaviour
     {
         if (!_isInteracting || finger.index != 0) return;
 
-        // STEERING LOGIC (Horizontal Drag Delta)
-        float deltaX = finger.screenPosition.x - _lastFrameTouchPos.x;
-        _lastFrameTouchPos = finger.screenPosition;
+        // Calculate distance from the original tap position
+        float deltaX = finger.screenPosition.x - _joystickCenter.x;
 
         float sensitivity = invertSteering ? -1f : 1f;
-        float touchSteer = (deltaX / dragSensitivity) * sensitivity;
 
-        // Combine Touch + Joystick
-        SteeringInput = Mathf.Clamp(touchSteer + ExternalJoystickInput, -1f, 1f);
+        // Normalize the input based on our defined joystick radius
+        float rawSteer = (deltaX / joystickRadius) * sensitivity;
+
+        // Clamp the target so we don't steer past 100%
+        _targetSteering = Mathf.Clamp(rawSteer, -1f, 1f);
     }
 
     private void HandleFingerUp(Finger finger)
@@ -82,8 +110,8 @@ public class InputManager : MonoBehaviour
 
         _isInteracting = false;
 
-        // Reset Steering on release
-        SteeringInput = 0f;
+        // Releasing the screen snaps the target back to center (straight forward)
+        _targetSteering = 0f;
     }
 
     // --- UI CHECK ---
@@ -91,13 +119,11 @@ public class InputManager : MonoBehaviour
     {
         if (EventSystem.current == null) return false;
 
-        // Check if the touch pointer is currently over a UI element
         int pointerId = finger.currentTouch.touchId;
 
         if (EventSystem.current.IsPointerOverGameObject(pointerId))
             return true;
 
-        // Fallback for editor/mouse clicks
         if (EventSystem.current.IsPointerOverGameObject(-1))
             return true;
 
