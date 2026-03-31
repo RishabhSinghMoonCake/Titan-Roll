@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Runtime.InteropServices.WindowsRuntime;
 using TMPro;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -40,6 +41,14 @@ public class GameLevelManager : MonoBehaviour
 
     private GameObject _currentSkinInstance;
     private int _currentSkinIndex = -1;
+
+    public static GameLevelManager Instance;
+
+    private void Awake()
+    {
+        if (Instance == null) Instance = this;
+        else Destroy(gameObject);
+    }
 
     private void Start()
     {
@@ -150,12 +159,18 @@ public class GameLevelManager : MonoBehaviour
     private void FireBoulder()
     {
         currentState = GameState.Launched;
-        int strengthLvl = PlayerDataManager.Instance.data.strengthLevel;
-        float launchSpeed = baseLaunchSpeed + ((strengthLvl - 1) * speedPerStrengthLevel);
+        
+        float launchSpeed = GetTotalLaunchSpeed();
 
         arcadeBoulder.Launch(launchSpeed);
 
         if (dynamicCamera != null) dynamicCamera.TriggerLaunchSequence();
+    }
+
+    public float GetTotalLaunchSpeed()
+    {
+        int strengthLvl = PlayerDataManager.Instance.data.strengthLevel;
+        return baseLaunchSpeed + ((strengthLvl - 1) * speedPerStrengthLevel);
     }
 
     // --- END RUN LOGIC ---
