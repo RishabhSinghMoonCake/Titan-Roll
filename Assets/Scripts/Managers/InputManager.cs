@@ -3,6 +3,7 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem.EnhancedTouch;
 using Touch = UnityEngine.InputSystem.EnhancedTouch.Touch;
+using System.Collections.Generic;
 
 public class InputManager : MonoBehaviour
 {
@@ -76,7 +77,8 @@ public class InputManager : MonoBehaviour
         if (Touch.activeTouches.Count > 1) return;
 
         // Ignore the tap if the user is touching a UI element (e.g., a button)
-        if (IsPointerOverUI(finger)) return;
+        // UPDATED: Pass the exact screen position
+        if (IsPointerOverUI(finger.screenPosition)) return;
 
         _isInteracting = true;
 
@@ -115,18 +117,17 @@ public class InputManager : MonoBehaviour
     }
 
     // --- UI CHECK ---
-    private bool IsPointerOverUI(Finger finger)
+    private bool IsPointerOverUI(Vector2 screenPosition)
     {
         if (EventSystem.current == null) return false;
 
-        int pointerId = finger.currentTouch.touchId;
+        PointerEventData eventData = new PointerEventData(EventSystem.current);
+        eventData.position = screenPosition;
 
-        if (EventSystem.current.IsPointerOverGameObject(pointerId))
-            return true;
+        List<RaycastResult> results = new List<RaycastResult>();
+        EventSystem.current.RaycastAll(eventData, results);
 
-        if (EventSystem.current.IsPointerOverGameObject(-1))
-            return true;
-
-        return false;
+        // If the raycast hit anything on the UI layer, return true!
+        return results.Count > 0;
     }
 }

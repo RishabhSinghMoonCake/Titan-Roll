@@ -1,7 +1,8 @@
+using Cinemachine;
+using DG.Tweening;
 using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
-using Cinemachine;
 
 public class LaunchSequenceManager : MonoBehaviour
 {
@@ -123,7 +124,6 @@ public class LaunchSequenceManager : MonoBehaviour
         // Pass control back to GameLevelManager to allow joystick steering
         GameLevelManager.Instance.SetStateToLaunched();
     }
-
     private IEnumerator FlyWeaponToHand()
     {
         if (skinManager == null) yield break;
@@ -133,26 +133,15 @@ public class LaunchSequenceManager : MonoBehaviour
 
         if (weapon == null || targetSocket == null) yield break;
 
-        Vector3 startPos = weapon.position;
-        Quaternion startRot = weapon.rotation;
+        // Tell DOTween to move and rotate the weapon simultaneously
+        // Ease.InOutSine gives it that beautiful smooth acceleration and deceleration
+        weapon.DOMove(targetSocket.position, weaponPickupDuration).SetEase(Ease.InOutSine);
+        weapon.DORotateQuaternion(targetSocket.rotation, weaponPickupDuration).SetEase(Ease.InOutSine);
 
-        float elapsedTime = 0f;
+        // We still yield for the duration so the rest of the cinematic waits for the animation to finish!
+        yield return new WaitForSeconds(weaponPickupDuration);
 
-        while (elapsedTime < weaponPickupDuration)
-        {
-            elapsedTime += Time.deltaTime;
-            float t = elapsedTime / weaponPickupDuration;
-
-            // SmoothStep makes the weapon accelerate and decelerate naturally
-            float smoothT = Mathf.SmoothStep(0f, 1f, t);
-
-            weapon.position = Vector3.Lerp(startPos, targetSocket.position, smoothT);
-            weapon.rotation = Quaternion.Lerp(startRot, targetSocket.rotation, smoothT);
-
-            yield return null;
-        }
-
-        // Once it arrives, formally parent it to the bone socket so it follows animations
+        // Once it arrives, formally parent it to the bone socket so it follows the slap animation
         weapon.SetParent(targetSocket);
         weapon.localPosition = Vector3.zero;
         weapon.localRotation = Quaternion.identity;

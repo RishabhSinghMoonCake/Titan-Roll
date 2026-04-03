@@ -45,6 +45,9 @@ public class GameLevelManager : MonoBehaviour
     [Header("Camera")]
     public DynamicBoulderCamera dynamicCamera;
 
+    [Header("UI System")]
+    public UpgradeCardUI[] upgradeCards; // Drag all 3 cards here
+
     private GameObject _currentSkinInstance;
     private int _currentSkinIndex = -1;
 
@@ -160,8 +163,15 @@ public class GameLevelManager : MonoBehaviour
 
     public void UpdateUI()
     {
+        // 1. Update the main gold text
         if (goldText != null)
             goldText.text = "Gold: " + PlayerDataManager.Instance.data.gold.ToString("N0");
+
+        // 2. Tell every upgrade card to re-calculate its logic
+        foreach (UpgradeCardUI card in upgradeCards)
+        {
+            if (card != null) card.RefreshCardUI();
+        }
     }
 
     // --- LAUNCH CALCULATION ---
