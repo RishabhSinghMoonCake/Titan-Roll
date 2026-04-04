@@ -2669,15 +2669,18 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   skinManager: {fileID: 650471708}
-  vcamIdle: {fileID: 298247872}
-  vcamMinigame: {fileID: 2113931473}
+  vcamIdle: {fileID: 2113931473}
+  vcamMinigame: {fileID: 298247872}
   vcamFollow: {fileID: 422549641}
   boulder: {fileID: 1039256079}
   baseImpactReach: 2.5
   weaponPickupDuration: 0.5
+  strikeAnimationStateName: Slap
+  maxDragPixels: 200
+  maxWindupNormalizedTime: 0.9
+  impactDelayAfterRelease: 0.5
   timingMinigamePanel: {fileID: 0}
   timingSlider: {fileID: 0}
-  sliderSpeed: 2
 --- !u!1001 &177159523
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -4715,7 +4718,7 @@ Transform:
   m_GameObject: {fileID: 298247870}
   serializedVersion: 2
   m_LocalRotation: {x: -0.19158348, y: 0.109270036, z: -0.021498315, w: -0.9751378}
-  m_LocalPosition: {x: 0.34162852, y: 4.628419, z: -9.406534}
+  m_LocalPosition: {x: 1.36, y: 6.51, z: -13.91}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -6767,6 +6770,11 @@ PrefabInstance:
         type: 3}
       propertyPath: m_Name
       value: SeaGull
+      objectReference: {fileID: 0}
+    - target: {fileID: 1215680759356807962, guid: 124050d493d65874ebfc9dac614f7d2d,
+        type: 3}
+      propertyPath: m_IsActive
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 1987538349561020832, guid: 124050d493d65874ebfc9dac614f7d2d,
         type: 3}
@@ -18377,7 +18385,7 @@ Transform:
   m_GameObject: {fileID: 1249337698}
   serializedVersion: 2
   m_LocalRotation: {x: -0.19158348, y: 0.109270036, z: -0.021498315, w: -0.9751378}
-  m_LocalPosition: {x: 0.34162852, y: 4.628419, z: -9.406534}
+  m_LocalPosition: {x: 1.36, y: 6.51, z: -13.91}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -29380,7 +29388,7 @@ Transform:
   m_GameObject: {fileID: 2113931471}
   serializedVersion: 2
   m_LocalRotation: {x: -0.06017842, y: 0.7185159, z: -0.06267824, w: -0.69006157}
-  m_LocalPosition: {x: 8.011784, y: 2.87338, z: -0.9622216}
+  m_LocalPosition: {x: 11.76, y: 3.53, z: -0.81}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
