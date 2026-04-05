@@ -19,7 +19,7 @@ public class PlayerData
     // Constructor sets default "New Game" values
     public PlayerData()
     {
-        gold = 1000000000; // 1 BILLION (Testing Start)
+        gold = 500; 
         diamonds = 0;
 
         massLevel = 1;

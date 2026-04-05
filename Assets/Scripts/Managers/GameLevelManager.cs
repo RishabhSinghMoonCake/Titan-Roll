@@ -165,13 +165,21 @@ public class GameLevelManager : MonoBehaviour
     {
         // 1. Update the main gold text
         if (goldText != null)
-            goldText.text = "Gold: " + PlayerDataManager.Instance.data.gold.ToString("N0");
+            goldText.text = FormatMoney(PlayerDataManager.Instance.data.gold);
 
         // 2. Tell every upgrade card to re-calculate its logic
         foreach (UpgradeCardUI card in upgradeCards)
         {
             if (card != null) card.RefreshCardUI();
         }
+    }
+
+    public string FormatMoney(double amount)
+    {
+        if (amount >= 1000000000) return (amount / 1000000000D).ToString("0.##") + "B";
+        if (amount >= 1000000) return (amount / 1000000D).ToString("0.##") + "M";
+        if (amount >= 1000) return (amount / 1000D).ToString("0.##") + "K";
+        return amount.ToString("N0");
     }
 
     // --- LAUNCH CALCULATION ---
