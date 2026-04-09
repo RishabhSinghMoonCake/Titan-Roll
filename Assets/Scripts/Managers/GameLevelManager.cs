@@ -37,6 +37,7 @@ public class GameLevelManager : MonoBehaviour
     public float massPerLevel = 10f;     // Added physical weight per level
     public float baseColliderRadius = 0.5f;
     public float baseLaunchSpeed = 140f;
+    public float baseMass = 50f; // Base mass for level 1 (can be used in calculations or just as a reference)
     public float speedPerStrengthLevel = 14f;
 
     [Header("Economy Configuration")]
@@ -98,7 +99,7 @@ public class GameLevelManager : MonoBehaviour
 
         // 2. Update Physical Mass
         Rigidbody rb = arcadeBoulder.GetComponent<Rigidbody>();
-        float newMass = 100f + ((massLevel - 1) * massPerLevel);
+        float newMass = baseMass + ((massLevel - 1) * massPerLevel);
         if (rb != null) rb.mass = newMass;
         if (InputManager.Instance != null) InputManager.Instance.currentBoulderMass = newMass;
 
