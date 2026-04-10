@@ -26,6 +26,8 @@ public class TriggeredHerdSpawner : MonoBehaviour
     public float meanderWidth = 2.5f;
     [Tooltip("How fast they weave left and right")]
     public float meanderSpeed = 2f;
+    [Tooltip("How fast they smoothly rotate to face their path (Higher = Faster turn)")]
+    public float turnSpeed = 8f; // <--- NEW VARIABLE ADDED HERE
 
     // High-performance tools to talk to the shader
     private MaterialPropertyBlock _propBlock;
@@ -75,10 +77,7 @@ public class TriggeredHerdSpawner : MonoBehaviour
             GameObject go = Instantiate(prefab, spawnPos, Quaternion.identity, transform);
 
             // --- THE BULLETPROOF SHADER FIX ---
-            // Get all renderers on this specific chicken (in case it has multiple parts)
             Renderer[] renderers = go.GetComponentsInChildren<Renderer>();
-
-            // Generate ONE random offset for this whole chicken
             float uniqueOffset = Random.Range(0f, 100f);
 
             foreach (Renderer r in renderers)
@@ -89,7 +88,7 @@ public class TriggeredHerdSpawner : MonoBehaviour
             }
             // ----------------------------------
 
-            // 4. Force them to look directly at the Origin (0,0,0)
+            // 4. Force them to look directly at the Origin (0,0,0) initially
             Vector3 lookDir = Vector3.zero - spawnPos;
             lookDir.y = 0; // Keep it perfectly flat on the ground
             if (lookDir != Vector3.zero)
@@ -115,7 +114,6 @@ public class TriggeredHerdSpawner : MonoBehaviour
         // --- PHASE 1: WAITING FOR THE BOULDER ---
         if (!_hasTriggered)
         {
-            // You mentioned you set up an ArcadeBoulder Instance! We check it here.
             if (ArcadeBoulder.Instance != null && ArcadeBoulder.Instance.transform.position.z >= triggerZ)
             {
                 _hasTriggered = true;
@@ -125,16 +123,16 @@ public class TriggeredHerdSpawner : MonoBehaviour
 
         // --- PHASE 2: THE RUN ---
 
-        // Stop calculating if everyone has finished the race
         if (_finishedCount >= _herd.Length) return;
 
-        // Cache time variables outside the loop for extreme performance
         float time = Time.time;
         float dt = Time.deltaTime;
 
         for (int i = 0; i < _herd.Length; i++)
         {
+            if (!_herd[i].transform) continue; 
             AnimalData animal = _herd[i];
+            
             if (animal.isFinished) continue;
 
             Vector3 currentPos = animal.transform.position;
@@ -142,25 +140,27 @@ public class TriggeredHerdSpawner : MonoBehaviour
             // Calculate forward movement (+Z)
             float nextZ = currentPos.z + (animal.speed * dt);
 
-            // Check if they reached the end
             if (nextZ >= runEndZ)
             {
                 animal.isFinished = true;
-                animal.transform.gameObject.SetActive(false); // Hide them to save rendering
+                animal.transform.gameObject.SetActive(false);
                 _finishedCount++;
                 continue;
             }
 
             // Calculate the meander (Wandering X) using a smooth Sine wave
             float nextX = animal.baseX + Mathf.Sin(time * animal.meanderFreq + animal.timeOffset) * meanderWidth;
-
             Vector3 nextPos = new Vector3(nextX, currentPos.y, nextZ);
 
-            // Smoothly rotate to face the exact meandering path they are walking
+            // --- THE SMOOTH ROTATION FIX ---
             Vector3 moveDirection = nextPos - currentPos;
             if (moveDirection.sqrMagnitude > 0.001f)
             {
-                animal.transform.rotation = Quaternion.LookRotation(moveDirection);
+                // Calculate where they *want* to look
+                Quaternion targetRotation = Quaternion.LookRotation(moveDirection);
+
+                // Smoothly blend from where they are currently looking, to where they want to look
+                animal.transform.rotation = Quaternion.Slerp(animal.transform.rotation, targetRotation, turnSpeed * dt);
             }
 
             // Apply the final position

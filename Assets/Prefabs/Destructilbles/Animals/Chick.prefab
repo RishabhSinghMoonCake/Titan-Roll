@@ -170,6 +170,8 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 3822980627126796548}
+  - component: {fileID: 4879268836763501024}
+  - component: {fileID: 2952225172111410091}
   m_Layer: 0
   m_Name: Chick
   m_TagString: Untagged
@@ -194,6 +196,43 @@ Transform:
   - {fileID: 7502220564199474677}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!65 &4879268836763501024
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4128093227819146418}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 1
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 0.7, y: 1, z: 1}
+  m_Center: {x: 0, y: 0.5, z: 0}
+--- !u!114 &2952225172111410091
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4128093227819146418}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1825f86dea544914296c3a790cca8549, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  resistanceMomentum: 200
+  hardnessFactor: 0.6
+  fracturedPrefab: {fileID: 0}
+  dustEffectPrefab: {fileID: 0}
 --- !u!1 &4254083902983778838
 GameObject:
   m_ObjectHideFlags: 0
