@@ -22,8 +22,13 @@ public class ArcadeBoulder : MonoBehaviour
     private float timeSinceLaunch = 0f;
     private float maxStartLaunchSpeedMs;
 
+
+    public static ArcadeBoulder Instance { get; private set; }
+
     void Awake()
     {
+        if (Instance == null) Instance = this;
+        else Destroy(gameObject);
         rb = GetComponent<Rigidbody>();
         rb.useGravity = false;
         rb.drag = 0f;
