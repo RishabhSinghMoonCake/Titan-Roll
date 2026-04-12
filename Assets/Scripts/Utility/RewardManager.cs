@@ -16,11 +16,6 @@ public class RewardManager : MonoBehaviour
     [Header("End of Run (Distance)")]
     public List<GoldTier> distanceTiers;
 
-    [Header("Destruction Rewards")]
-    [Tooltip("How much distance boosts the smash reward. 1.1 = Very safe, 1.5 = Economy breaking at high distance")]
-    public float distanceExponent = 1.15f;
-    public float distanceDivisor = 100f; // e.g. at 500m: (500/100)^1.15 multiplier
-
     private float _accumulatedRunGold = 0f;
 
     private void Awake()
@@ -38,16 +33,12 @@ public class RewardManager : MonoBehaviour
     // Called every time the boulder smashes an object
     public void ProcessDestructionReward(float baseReward, float zDistance)
     {
-        // 1. Exponential Distance Benefit 
-        // e.g. At 0m = 1x. At 100m = 2.2x. At 500m = 7.9x.
-        float rawDistanceFactor = Mathf.Max(0, zDistance) / distanceDivisor;
-        float distanceMultiplier = 1.0f + Mathf.Pow(rawDistanceFactor, distanceExponent);
 
         // 2. Income Multiplier (Greed Level)
         float incomeMultiplier = GetIncomeMultiplier();
 
         // 3. The Final Cut
-        float finalReward = baseReward * distanceMultiplier * incomeMultiplier;
+        float finalReward = baseReward * incomeMultiplier;
 
         _accumulatedRunGold += finalReward;
 
@@ -87,6 +78,6 @@ public class RewardManager : MonoBehaviour
     private float GetIncomeMultiplier()
     {
         if (PlayerDataManager.Instance == null) return 1f;
-        return 1.0f + ((PlayerDataManager.Instance.data.greedLevel - 1) * 0.05f);
+        return 1.0f + ((PlayerDataManager.Instance.data.greedLevel - 1) * 0.1f);
     }
 }

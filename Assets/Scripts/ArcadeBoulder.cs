@@ -7,14 +7,16 @@ public class ArcadeBoulder : MonoBehaviour
 
     [Header("Arcade Tuning")]
     public float gravityMultiplier = 2.5f;
-    public float flatGroundDeceleration = 8f; // Now acts as universal ground friction
-    public float brakingThreshold = 10f;
-    public float brakingForce = 15f;
-
-    [Header("Steering Tuning")]
-    public float steeringForce = 40f;
     public float sideFriction = 5f;
+    public float steeringForce = 40f;
     public float steeringDelay = 0.5f;
+
+    [Header("Stamina System")]
+    public float currentStamina;
+    private float startingStamina;
+    [Range(0.1f, 0.5f)]
+    public float brakingZonePercentage = 0.25f;
+    public float maxBrakeForce = 25f;
 
     private Rigidbody rb;
     private bool isLaunched = false;
@@ -22,6 +24,7 @@ public class ArcadeBoulder : MonoBehaviour
     private float timeSinceLaunch = 0f;
     private float maxStartLaunchSpeedMs;
 
+    private float stuckTimer = 0f;
 
     public static ArcadeBoulder Instance { get; private set; }
 
@@ -29,13 +32,13 @@ public class ArcadeBoulder : MonoBehaviour
     {
         if (Instance == null) Instance = this;
         else Destroy(gameObject);
+
         rb = GetComponent<Rigidbody>();
         rb.useGravity = false;
         rb.drag = 0f;
         rb.angularDrag = 0.05f;
         rb.interpolation = RigidbodyInterpolation.Interpolate;
         rb.collisionDetectionMode = CollisionDetectionMode.Continuous;
-
         rb.isKinematic = true;
     }
 
@@ -43,13 +46,19 @@ public class ArcadeBoulder : MonoBehaviour
     {
         isLaunched = true;
         timeSinceLaunch = 0f;
+        stuckTimer = 0f;
         rb.isKinematic = false;
+
+        transform.rotation = Quaternion.identity;
+        rb.angularVelocity = Vector3.zero;
+
+        currentStamina = GameLevelManager.Instance.GetLaunchStamina();
+        startingStamina = currentStamina;
 
         float speedMs = launchSpeedKmh / 3.6f;
         maxStartLaunchSpeedMs = speedMs;
 
-        // Slight upward angle for a nice pop off the launch pad
-        Vector3 launchDir = (transform.forward + (Vector3.up * 0.15f)).normalized;
+        Vector3 launchDir = (Vector3.forward + (Vector3.up * 0.15f)).normalized;
         rb.velocity = launchDir * speedMs;
     }
 
@@ -57,77 +66,116 @@ public class ArcadeBoulder : MonoBehaviour
     {
         if (!isLaunched || timeSinceLaunch < steeringDelay) return;
 
-        // Scale steering force based on current speed. 
-        float speedFactor = Mathf.InverseLerp(0, maxStartLaunchSpeedMs, rb.velocity.magnitude);
+        // NaN FIX: Ensure we never divide by zero and the Rigidbody velocity isn't already corrupted
+        float safeMaxSpeed = Mathf.Max(maxStartLaunchSpeedMs, 1f);
+        float currentMag = float.IsNaN(rb.velocity.magnitude) ? 0f : rb.velocity.magnitude;
 
-        Vector3 steerDir = Vector3.right * input * steeringForce;
-        rb.AddForce(steerDir * speedFactor, ForceMode.Acceleration);
+        float sizeCompensator = transform.localScale.x;
+        float speedFactor = Mathf.Lerp(0.5f, 1.0f, currentMag / safeMaxSpeed);
+
+        Vector3 steerDir = Vector3.right * input * (steeringForce * sizeCompensator);
+
+        // Final NaN shield before pushing the boulder
+        if (!float.IsNaN(steerDir.x) && !float.IsNaN(speedFactor))
+        {
+            rb.AddForce(steerDir * speedFactor, ForceMode.Acceleration);
+        }
     }
 
     void FixedUpdate()
     {
         if (!isLaunched) return;
 
+        // If velocity somehow got corrupted by an outside force, reset it immediately
+        if (float.IsNaN(rb.velocity.x)) rb.velocity = Vector3.zero;
+
         timeSinceLaunch += Time.fixedDeltaTime;
         currentSpeedKmh = rb.velocity.magnitude * 3.6f;
 
-        // 1. Gravity, Air Resistance, & Forward Logic
-        rb.AddForce(Physics.gravity * gravityMultiplier, ForceMode.Acceleration);
-        rb.AddForce(-rb.velocity.normalized * 1.5f, ForceMode.Acceleration);
+        Vector3 flatVelocity = new Vector3(rb.velocity.x, 0, rb.velocity.z);
+        float flatSpeedKmh = flatVelocity.magnitude * 3.6f;
 
-        HandleGroundFriction();
-
-        // 2. LATERAL FRICTION (The "Weight" Logic)
-        Vector3 localVel = transform.InverseTransformDirection(rb.velocity);
-        float sidewaysDrag = -localVel.x * sideFriction;
-        rb.AddForce(transform.right * sidewaysDrag, ForceMode.Acceleration);
-
-        // 3. Stop Logic
-        if (currentSpeedKmh < brakingThreshold && timeSinceLaunch > 2.0f)
+        if (flatSpeedKmh < 2.5f)
         {
-            ApplyBraking();
+            stuckTimer += Time.fixedDeltaTime;
+            if (stuckTimer >= 0.5f)
+            {
+                ApplyBraking();
+                return;
+            }
         }
-    }
-
-    void HandleGroundFriction()
-    {
-        // If we are touching the ground, apply our constant arcade friction
-        // We no longer calculate slope angles or apply downhill acceleration.
-        if (Physics.Raycast(transform.position, Vector3.down, out RaycastHit hit, 2.0f))
+        else
         {
-            rb.AddForce(-rb.velocity.normalized * flatGroundDeceleration, ForceMode.Acceleration);
+            stuckTimer = 0f;
+        }
+
+        rb.AddForce(Physics.gravity * gravityMultiplier, ForceMode.Acceleration);
+        // --- THE FIXED LATERAL FRICTION ---
+        // We use World X (rb.velocity.x) instead of the tumbling local axes.
+        // This guarantees friction only stops sideways sliding, and never pulls the ball backward or right!
+        float sidewaysVelocity = rb.velocity.x;
+        float sidewaysDrag = -sidewaysVelocity * sideFriction;
+        rb.AddForce(Vector3.right * sidewaysDrag, ForceMode.Acceleration);
+
+        if (currentStamina > 0)
+        {
+            currentStamina -= Time.fixedDeltaTime;
+            if (currentStamina < 0) currentStamina = 0;
+        }
+
+        // --- THE NaN FIX ---
+        // Ensure dynamicBrakeThreshold is never 0, preventing division by zero.
+        float dynamicBrakeThreshold = Mathf.Max(startingStamina * brakingZonePercentage, 0.01f);
+
+        if (currentStamina <= dynamicBrakeThreshold)
+        {
+            float rawIntensity = 1f - (currentStamina / dynamicBrakeThreshold);
+            float smoothIntensity = Mathf.SmoothStep(0f, 1f, rawIntensity);
+
+            float currentBrakeForce = maxBrakeForce * smoothIntensity;
+
+            if (flatVelocity.sqrMagnitude > 0.01f && !float.IsNaN(currentBrakeForce))
+            {
+                rb.AddForce(-flatVelocity.normalized * currentBrakeForce, ForceMode.Acceleration);
+            }
+        }
+
+        if (currentStamina == 0f)
+        {
+            if (flatVelocity.sqrMagnitude > 0.01f)
+            {
+                rb.AddForce(-flatVelocity.normalized * maxBrakeForce, ForceMode.Acceleration);
+            }
+
+            if (flatSpeedKmh < 5f)
+            {
+                ApplyBraking();
+            }
         }
     }
 
     void ApplyBraking()
     {
-        rb.AddForce(-rb.velocity.normalized * brakingForce, ForceMode.Acceleration);
-
-        if (currentSpeedKmh < 1f)
-        {
-            isLaunched = false;
-            rb.isKinematic = true;
-            Debug.Log("ArcadeBoulder: Run Finished smoothly.");
-            OnRunFinished?.Invoke();
-        }
+        isLaunched = false;
+        rb.isKinematic = true;
+        Debug.Log("ArcadeBoulder: Run Finished smoothly.");
+        OnRunFinished?.Invoke();
     }
-
-    // --- COLLISION UTILITIES ---
 
     public float GetCurrentSpeedMs() => rb.velocity.magnitude;
 
-    public void ApplyImpactSlowdown(float speedLossKmh)
+    public void ApplyImpactSlowdown(float damagePercentage)
     {
-        // CRITICAL FIX: Read the exact velocity right NOW, not the cached FixedUpdate one.
-        // This guarantees if you hit 3 objects in one frame, the slowdown aggressively stacks!
-        float exactCurrentSpeedKmh = rb.velocity.magnitude * 3.6f;
-
-        if (exactCurrentSpeedKmh < 1f) return;
-
-        float newSpeedKmh = exactCurrentSpeedKmh - speedLossKmh;
+        float newSpeedKmh = currentSpeedKmh * (1f - damagePercentage);
         if (newSpeedKmh < 5f) newSpeedKmh = 5f;
 
         rb.velocity = rb.velocity.normalized * (newSpeedKmh / 3.6f);
+
+        float staminaPenalty = currentStamina * damagePercentage;
+        currentStamina -= staminaPenalty;
+        if (currentStamina < 0) currentStamina = 0;
+
+        Debug.Log($"<color=orange>[IMPACT]</color> Damage Taken: <b>{damagePercentage * 100f:F1}%</b> | Speed dropped to: {newSpeedKmh:F0} km/h | Stamina Lost: {staminaPenalty:F1}s");
     }
 
     public void ApplyBonk()
@@ -135,7 +183,7 @@ public class ArcadeBoulder : MonoBehaviour
         rb.velocity = Vector3.zero;
         rb.angularVelocity = Vector3.zero;
 
-        rb.AddForce(-transform.forward * 10f, ForceMode.Impulse);
+        rb.AddForce(-Vector3.forward * 10f, ForceMode.Impulse);
 
         isLaunched = false;
         Debug.Log("ArcadeBoulder: BONK! Hit a solid wall.");

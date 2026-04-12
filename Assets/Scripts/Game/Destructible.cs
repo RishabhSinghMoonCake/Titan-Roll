@@ -20,20 +20,23 @@ public class Destructible : MonoBehaviour
 
     private void Start()
     {
-        // THE FIX: Hardcoding the absolute bounds here. 
-        // Unity's Inspector can NEVER zero these out again!
         float minRes = 20f, maxRes = 25000f;
         float minMass = 0f, maxMass = 600f;
         float minHard = 0.2f, maxHard = 1.0f;
-        float minRew = 2f, maxRew = 50000f;
+        float minRew = 2f, maxRew = 5000f;
 
-        // Calculate where we are on the 1-to-50 scale as a percentage
+        // Calculate where we are on the 1-to-50 scale as a percentage (0.0 to 1.0)
         float t = (toughnessLevel - 1) / 49f;
 
         _actualResistance = Mathf.Lerp(minRes, maxRes, t);
         _actualRequiredMass = Mathf.Lerp(minMass, maxMass, t);
         _actualHardness = Mathf.Lerp(minHard, maxHard, t);
-        _actualBaseReward = Mathf.Lerp(minRew, maxRew, t);
+
+        // --- THE ECONOMY SAVER: CUBIC REWARD CURVE ---
+        // By cubing the percentage (t * t * t), the reward stays very low for a long time,
+        // preventing early-game inflation, and then spikes massively for late-game buildings!
+        float economyCurve = Mathf.Pow(t, 3);
+        _actualBaseReward = Mathf.Lerp(minRew, maxRew, economyCurve);
     }
 
     void OnTriggerEnter(Collider other)
@@ -55,23 +58,25 @@ public class Destructible : MonoBehaviour
                 return;
             }
 
-            // --- 2. THE ENERGY DRAIN MATH ---
-            float effectiveSpeed = Mathf.Sqrt(playerSpeedMs) * 6f;
-            float impactPower = playerMass * effectiveSpeed;
+            // --- 2. THE NEW STAMINA/DAMAGE MATH ---
+
+            // Get the player's raw Strength Level (1 to ~50)
+            int strengthLevel = PlayerDataManager.Instance.data.strengthLevel;
+
+            // Impact Power is now driven purely by Mass and Strength Level.
+            // A multiplier of 15f keeps early game identical, but scales beautifully to late game.
+            float impactPower = playerMass * strengthLevel * 15f;
 
             if (impactPower >= _actualResistance)
             {
                 // --- SUCCESS: SMASH! ---
                 _isBroken = true;
 
-                // Calculate percentage of power used, multiplied by hardness
                 float powerRatioUsed = _actualResistance / impactPower;
-                float speedLossPercentage = Mathf.Clamp01(powerRatioUsed * _actualHardness);
+                float damagePercentage = Mathf.Clamp01(powerRatioUsed * _actualHardness);
 
-                float exactCurrentSpeedKmh = playerSpeedMs * 3.6f;
-                float speedLossKmh = exactCurrentSpeedKmh * speedLossPercentage;
-
-                boulder.ApplyImpactSlowdown(speedLossKmh);
+                // Instead of passing KM/H to lose, we pass the Percentage of Stamina to lose!
+                boulder.ApplyImpactSlowdown(damagePercentage);
 
                 if (RewardManager.Instance != null)
                 {

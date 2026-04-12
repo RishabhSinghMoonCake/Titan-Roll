@@ -28,7 +28,7 @@ public class GameLevelManager : MonoBehaviour
 
     [Header("Boulder Math Settings")]
     public float scalePerLevel = 0.05f;  // 5% size increase per level
-    public float massPerLevel = 10f;     // Added physical weight per level
+    public float massAtLevel40 = 1000f;     // Added physical weight per level
     public float baseColliderRadius = 0.5f;
     public float baseLaunchSpeed = 140f;
     public float baseMass = 50f; // Base mass for level 1 (can be used in calculations or just as a reference)
@@ -90,7 +90,7 @@ public class GameLevelManager : MonoBehaviour
 
         // 2. Update Physical Mass
         Rigidbody rb = arcadeBoulder.GetComponent<Rigidbody>();
-        float newMass = baseMass + ((massLevel - 1) * massPerLevel);
+        float newMass = Mathf.Lerp(baseMass,massAtLevel40, (massLevel - 1) / 39f);
         if (rb != null) rb.mass = newMass;
         if (InputManager.Instance != null) InputManager.Instance.currentBoulderMass = newMass;
 
@@ -176,11 +176,26 @@ public class GameLevelManager : MonoBehaviour
 
     // --- LAUNCH CALCULATION ---
 
-    // LaunchSequenceManager will call this to figure out the base speed before applying the minigame multiplier
+    // --- NEW STAMINA & SPEED MATH ---
+
     public float GetTotalLaunchSpeed()
     {
         int strengthLvl = PlayerDataManager.Instance.data.strengthLevel;
-        return baseLaunchSpeed + ((strengthLvl - 1) * speedPerStrengthLevel);
+
+        // Starts at 30 km/h. At level 40, it caps exactly at 150 km/h.
+        // It uses a nice curve so early levels feel impactful, but it flattens out later.
+        float speedKmh = Mathf.Lerp(60f, 350f, (strengthLvl - 1) / 39f);
+
+        return speedKmh; // Remember, ArcadeBoulder converts this to m/s!
+    }
+
+    public float GetLaunchStamina()
+    {
+        int strengthLvl = PlayerDataManager.Instance.data.strengthLevel;
+
+        // Level 1 = 5 seconds of cruising. 
+        // Level 40 = 72 seconds of cruising (which equals exactly 3000 meters at 150km/h!)
+        return Mathf.Lerp(6f, 72f, (strengthLvl - 1) / 39f);
     }
 
     // --- END RUN LOGIC ---
