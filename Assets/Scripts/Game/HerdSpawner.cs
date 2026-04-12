@@ -49,7 +49,7 @@ public class HerdSpawner : MonoBehaviour
         _movingRight = startPoint.position.x < endPoint.position.x;
         _currentSpawnInterval = baseSpawnInterval;
         completedSpawning = false;
-        InitializePool();
+        StartCoroutine(InitializePool());
     }
 
     private IEnumerator InitializePool()

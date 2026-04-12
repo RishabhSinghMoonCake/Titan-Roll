@@ -47,7 +47,6 @@ public class LaunchSequenceManager : MonoBehaviour
         if (InputManager.Instance != null)
             InputManager.Instance.OnLaunchTap += HandleInitialTap;
 
-        // Reset the upgrade panel scale in case the level was restarted
         if (upgradePanel != null) upgradePanel.transform.localScale = Vector3.one;
 
         StartCoroutine(PreLaunchSequence());
@@ -84,7 +83,6 @@ public class LaunchSequenceManager : MonoBehaviour
         if (timingMinigamePanel) timingMinigamePanel.SetActive(true);
         if (timingSlider) timingSlider.value = 0f;
 
-        // 1. ANIMATE OUT THE UPGRADE PANEL (DOTWEEN)
         if (upgradePanel != null && upgradePanel.activeSelf)
         {
             upgradePanel.transform.DOScale(Vector3.zero, 0.25f)
@@ -98,18 +96,14 @@ public class LaunchSequenceManager : MonoBehaviour
         float dpiScale = Screen.dpi > 0 ? Screen.dpi / 160f : Screen.height / 1080f;
         float actualMaxDrag = maxDragPixels * dpiScale;
 
-        // 2. SET THE DEAD-ZONE TIMER
         float safeInputTime = Time.time + inputDeadZoneDelay;
-
-        // 3. TRACK THE SPECIFIC FINGER
         UnityEngine.InputSystem.EnhancedTouch.Finger activeFinger = null;
 
         while (true)
         {
-            // --- NON-BLOCKING SHIELD ---
-            // Ignore touch inputs entirely until the camera has settled
             if (Time.time >= safeInputTime)
             {
+                // THE MEMORY LEAK FIX: We ONLY look at the fresh touches for this exact frame
                 var touches = Touch.activeTouches;
 
                 if (!isDragging && touches.Count > 0)
@@ -119,36 +113,51 @@ public class LaunchSequenceManager : MonoBehaviour
                         if (touch.phase == UnityEngine.InputSystem.TouchPhase.Began)
                         {
                             isDragging = true;
-                            activeFinger = touch.finger; // Lock onto this exact finger
+                            activeFinger = touch.finger;
                             startTouchPos = touch.screenPosition;
 
                             if (animator != null)
                                 animator.SetBool("IsHolding", true);
 
-                            break; // Stop checking other touches
+                            break;
                         }
                     }
                 }
                 else if (isDragging && activeFinger != null)
                 {
-                    var currentTouch = activeFinger.currentTouch;
+                    bool fingerStillOnScreen = false;
 
-                    if (currentTouch.phase == UnityEngine.InputSystem.TouchPhase.Moved ||
-                        currentTouch.phase == UnityEngine.InputSystem.TouchPhase.Stationary)
+                    // Manually check if our specific finger is still touching the screen this frame
+                    foreach (var touch in touches)
                     {
-                        // Strict downward 1D pull
-                        float dragDistY = startTouchPos.y - currentTouch.screenPosition.y;
-                        targetDragPower = Mathf.Clamp01(dragDistY / actualMaxDrag);
+                        if (touch.finger == activeFinger)
+                        {
+                            fingerStillOnScreen = true;
+
+                            if (touch.phase == UnityEngine.InputSystem.TouchPhase.Moved ||
+                                touch.phase == UnityEngine.InputSystem.TouchPhase.Stationary)
+                            {
+                                float dragDistY = startTouchPos.y - touch.screenPosition.y;
+                                targetDragPower = Mathf.Clamp01(dragDistY / actualMaxDrag);
+                            }
+                            else if (touch.phase == UnityEngine.InputSystem.TouchPhase.Ended ||
+                                     touch.phase == UnityEngine.InputSystem.TouchPhase.Canceled)
+                            {
+                                isDragging = false; // Player lifted their finger
+                            }
+
+                            break; // Found our finger, stop looping
+                        }
                     }
-                    else if (currentTouch.phase == UnityEngine.InputSystem.TouchPhase.Ended ||
-                             currentTouch.phase == UnityEngine.InputSystem.TouchPhase.Canceled)
+
+                    // If they lifted the finger, OR the finger data vanished from the screen array, break!
+                    if (!fingerStillOnScreen || !isDragging)
                     {
-                        break; // Player released the screen!
+                        break;
                     }
                 }
             }
 
-            // Smooth power (Using your exact working SmoothDamp)
             smoothedDragPower = Mathf.SmoothDamp(
                 smoothedDragPower,
                 targetDragPower,
@@ -156,14 +165,12 @@ public class LaunchSequenceManager : MonoBehaviour
                 0.08f
             );
 
-            // Update animator
             if (animator != null)
                 animator.SetFloat("WindupPower", smoothedDragPower);
 
             if (timingSlider)
                 timingSlider.value = smoothedDragPower;
 
-            // Weapon shake at max
             if (skinManager.giantWeaponInScene != null)
             {
                 if (smoothedDragPower > 0.95f)
@@ -184,19 +191,15 @@ public class LaunchSequenceManager : MonoBehaviour
             yield return null;
         }
 
-        // Cleanup
+        // --- CLEANUP & RELEASE ---
         if (timingMinigamePanel) timingMinigamePanel.SetActive(false);
         if (skinManager.giantWeaponInScene != null)
             skinManager.giantWeaponInScene.localRotation = Quaternion.identity;
 
-        // --- RELEASE ---
         if (animator != null)
         {
             animator.SetBool("IsHolding", false);
-
-            // small anticipation delay
             yield return new WaitForSeconds(0.05f);
-
             animator.SetTrigger("Release");
         }
 

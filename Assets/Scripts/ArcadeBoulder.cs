@@ -40,6 +40,8 @@ public class ArcadeBoulder : MonoBehaviour
         rb.interpolation = RigidbodyInterpolation.Interpolate;
         rb.collisionDetectionMode = CollisionDetectionMode.Continuous;
         rb.isKinematic = true;
+        // THE FIX: Unlock the rotation speed limit! (Default is only 7)
+        rb.maxAngularVelocity = 150f;
     }
 
     public void Launch(float launchSpeedKmh)

@@ -58,6 +58,7 @@ public class GameLevelManager : MonoBehaviour
     {
 
         Application.targetFrameRate = 60;
+        QualitySettings.vSyncCount = 0;
         currentState = GameState.Idle;
 
         // Note: We REMOVED the OnLaunchTap subscription from here. 

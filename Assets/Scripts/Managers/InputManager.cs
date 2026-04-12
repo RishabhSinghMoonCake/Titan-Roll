@@ -68,7 +68,10 @@ public class InputManager : MonoBehaviour
 
         float finalTarget = Mathf.Clamp(_targetSteering + ExternalJoystickInput, -1f, 1f);
 
-        SteeringInput = Mathf.Lerp(SteeringInput, finalTarget, Time.deltaTime * dynamicSmoothness);
+        // THE FIX: Framerate-Independent Lerp!
+        // This guarantees your steering feels EXACTLY the same at 15 FPS or 120 FPS.
+        float lerpFactor = 1f - Mathf.Exp(-dynamicSmoothness * Time.deltaTime);
+        SteeringInput = Mathf.Lerp(SteeringInput, finalTarget, lerpFactor);
     }
 
     private void HandleFingerDown(Finger finger)
