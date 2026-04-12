@@ -229,8 +229,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1825f86dea544914296c3a790cca8549, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  resistanceMomentum: 200
-  hardnessFactor: 0.6
+  toughnessLevel: 3
+  minResistance: 50
+  minHardness: 0.2
+  minBaseReward: 2
+  maxResistance: 25000
+  maxHardness: 1
+  maxBaseReward: 500
   fracturedPrefab: {fileID: 0}
   dustEffectPrefab: {fileID: 0}
 --- !u!1 &4254083902983778838

@@ -5,12 +5,6 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
-[System.Serializable]
-public struct GoldTier
-{
-    public float endDistance;
-    public float goldPerMeter;
-}
 
 public class GameLevelManager : MonoBehaviour
 {
@@ -39,9 +33,6 @@ public class GameLevelManager : MonoBehaviour
     public float baseLaunchSpeed = 140f;
     public float baseMass = 50f; // Base mass for level 1 (can be used in calculations or just as a reference)
     public float speedPerStrengthLevel = 14f;
-
-    [Header("Economy Configuration")]
-    public List<GoldTier> distanceTiers;
 
     [Header("Camera")]
     public DynamicBoulderCamera dynamicCamera;
@@ -201,28 +192,13 @@ public class GameLevelManager : MonoBehaviour
         currentState = GameState.Idle;
 
         float finalDist = arcadeBoulder.transform.position.z;
-        float greedMult = 1.0f + ((PlayerDataManager.Instance.data.greedLevel - 1) * 0.05f);
 
-        // Calculate Gold
-        float remainingDist = finalDist;
-        float accumulatedGold = 0f;
-        float previousTierEnd = 0f;
+        // The RewardManager now handles the Distance Tiers AND the Smash Gold!
+        int goldEarned = RewardManager.Instance.FinalizeRunRewards(finalDist);
 
-        foreach (GoldTier tier in distanceTiers)
-        {
-            if (remainingDist <= 0) break;
-            float tierLength = tier.endDistance - previousTierEnd;
-            float distInTier = Mathf.Min(remainingDist, tierLength);
-            accumulatedGold += distInTier * tier.goldPerMeter;
-            remainingDist -= distInTier;
-            previousTierEnd = tier.endDistance;
-        }
-
-        int goldEarned = Mathf.FloorToInt(accumulatedGold * greedMult);
-
+        // Optional: Update your UI here to show "Total Earned: [goldEarned]" before restarting
         yield return new WaitForSeconds(2.5f);
 
-        PlayerDataManager.Instance.AddGold(goldEarned);
         SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
     }
 

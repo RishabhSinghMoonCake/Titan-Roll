@@ -5000,8 +5000,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1825f86dea544914296c3a790cca8549, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  resistanceMomentum: 500
-  hardnessFactor: 0.7
+  toughnessLevel: 8
   fracturedPrefab: {fileID: 0}
   dustEffectPrefab: {fileID: 0}
 --- !u!4 &7824998166581416017 stripped

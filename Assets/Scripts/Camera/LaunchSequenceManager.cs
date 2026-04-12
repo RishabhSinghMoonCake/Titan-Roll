@@ -16,38 +16,39 @@ public class LaunchSequenceManager : MonoBehaviour
     public CinemachineVirtualCamera vcamMinigame;
     public CinemachineVirtualCamera vcamFollow;
 
-    [Header("Characters & Objects")]
+    [Header("Objects")]
     public ArcadeBoulder boulder;
     public float baseImpactReach = 2.5f;
 
-    [Header("Weapon Animation")]
-    public float weaponPickupDuration = 0.5f;
-
-    [Header("Drag & Strike Mechanics")]
-    [Tooltip("The exact name of your slapping animation state in the Animator (Case Sensitive)")]
-    public string strikeAnimationStateName = "Slap";
-
-    [Tooltip("How many reference pixels the user must drag to reach 100% power")]
+    [Header("Drag Settings")]
     public float maxDragPixels = 200f;
 
-    [Tooltip("At 100% power, what % of the animation is played? (e.g., 0.4 means it scrubs up to 40% into the animation)")]
-    [Range(0.1f, 0.9f)] public float maxWindupNormalizedTime = 0.45f;
-
-    [Tooltip("How long after the player releases the screen does the bat physically hit the rock?")]
+    [Header("Timing")]
     public float impactDelayAfterRelease = 0.15f;
 
-    [Header("UI Minigame")]
+    [Header("UI")]
     public GameObject timingMinigamePanel;
-    public Slider timingSlider; // We will reuse this as a Power Bar!
+    public Slider timingSlider;
+
+    [Header("Phase Settings")]
+    [Tooltip("The upgrade panel to hide when the game starts")]
+    public GameObject upgradePanel;
+    [Tooltip("Seconds to ignore touches after the camera cuts to prevent misfires")]
+    public float inputDeadZoneDelay = 0.4f;
 
     private bool _waitingForFirstTap = true;
+
+    private float smoothedDragPower = 0f;
+    private float targetDragPower = 0f;
+    private float velocity = 0f;
 
     private void Start()
     {
         if (InputManager.Instance != null)
-        {
             InputManager.Instance.OnLaunchTap += HandleInitialTap;
-        }
+
+        // Reset the upgrade panel scale in case the level was restarted
+        if (upgradePanel != null) upgradePanel.transform.localScale = Vector3.one;
 
         StartCoroutine(PreLaunchSequence());
     }
@@ -56,118 +57,157 @@ public class LaunchSequenceManager : MonoBehaviour
     {
         if (_waitingForFirstTap) _waitingForFirstTap = false;
     }
+
     private IEnumerator PreLaunchSequence()
     {
-        // --- 1. HAPPY IDLE STATE ---
+        // --- IDLE ---
         CutToCamera(vcamIdle);
-        if (timingMinigamePanel != null) timingMinigamePanel.SetActive(false);
+        if (timingMinigamePanel) timingMinigamePanel.SetActive(false);
         AlignCharacterToBoulder();
 
-        // Character is looping HappyIdle. Wait for tap.
         _waitingForFirstTap = true;
         while (_waitingForFirstTap) yield return null;
 
-
-        // --- 2. WEAPON PICKUP & BASEBALL IDLE TRANSITION ---
+        // --- PICKUP ---
         yield return StartCoroutine(FlyWeaponToHand());
 
-        if (skinManager.currentActiveAnimator != null)
-        {
-            // Tell the Animator to blend from HappyIdle into BaseballIdle
-            skinManager.currentActiveAnimator.SetTrigger("StartMinigame");
-        }
+        var animator = skinManager.currentActiveAnimator;
 
-        // Wait half a second for the animation transition to fully finish
+        if (animator != null)
+            animator.SetTrigger("StartMinigame");
+
         yield return new WaitForSeconds(0.5f);
 
-
-        // --- 3. THE DRAG & WINDUP PHASE (CODE CONTROLLED) ---
+        // --- DRAG PHASE ---
         CutToCamera(vcamMinigame);
-        if (timingMinigamePanel != null) timingMinigamePanel.SetActive(true);
-        if (timingSlider != null) timingSlider.value = 0f;
 
-        float targetDragPower = 0f;
-        float smoothedDragPower = 0f;
+        if (timingMinigamePanel) timingMinigamePanel.SetActive(true);
+        if (timingSlider) timingSlider.value = 0f;
+
+        // 1. ANIMATE OUT THE UPGRADE PANEL (DOTWEEN)
+        if (upgradePanel != null && upgradePanel.activeSelf)
+        {
+            upgradePanel.transform.DOScale(Vector3.zero, 0.25f)
+                .SetEase(Ease.InBack)
+                .OnComplete(() => upgradePanel.SetActive(false));
+        }
+
         bool isDragging = false;
         Vector2 startTouchPos = Vector2.zero;
 
         float dpiScale = Screen.dpi > 0 ? Screen.dpi / 160f : Screen.height / 1080f;
         float actualMaxDrag = maxDragPixels * dpiScale;
 
+        // 2. SET THE DEAD-ZONE TIMER
+        float safeInputTime = Time.time + inputDeadZoneDelay;
+
+        // 3. TRACK THE SPECIFIC FINGER
+        UnityEngine.InputSystem.EnhancedTouch.Finger activeFinger = null;
+
         while (true)
         {
-            if (Touch.activeTouches.Count > 0)
+            // --- NON-BLOCKING SHIELD ---
+            // Ignore touch inputs entirely until the camera has settled
+            if (Time.time >= safeInputTime)
             {
-                var touch = Touch.activeTouches[0];
+                var touches = Touch.activeTouches;
 
-                if (touch.phase == UnityEngine.InputSystem.TouchPhase.Began)
+                if (!isDragging && touches.Count > 0)
                 {
-                    isDragging = true;
-                    startTouchPos = touch.screenPosition;
+                    foreach (var touch in touches)
+                    {
+                        if (touch.phase == UnityEngine.InputSystem.TouchPhase.Began)
+                        {
+                            isDragging = true;
+                            activeFinger = touch.finger; // Lock onto this exact finger
+                            startTouchPos = touch.screenPosition;
 
-                    // PAUSE the animator so we can manually scrub the frames!
-                    if (skinManager.currentActiveAnimator != null)
-                        skinManager.currentActiveAnimator.speed = 0f;
+                            if (animator != null)
+                                animator.SetBool("IsHolding", true);
+
+                            break; // Stop checking other touches
+                        }
+                    }
                 }
-                else if (touch.phase == UnityEngine.InputSystem.TouchPhase.Moved && isDragging)
+                else if (isDragging && activeFinger != null)
                 {
-                    float currentDragDist = Vector2.Distance(startTouchPos, touch.screenPosition);
-                    targetDragPower = Mathf.Clamp01(currentDragDist / actualMaxDrag);
-                }
-                else if ((touch.phase == UnityEngine.InputSystem.TouchPhase.Ended || touch.phase == UnityEngine.InputSystem.TouchPhase.Canceled) && isDragging)
-                {
-                    break; // Player released the screen!
+                    var currentTouch = activeFinger.currentTouch;
+
+                    if (currentTouch.phase == UnityEngine.InputSystem.TouchPhase.Moved ||
+                        currentTouch.phase == UnityEngine.InputSystem.TouchPhase.Stationary)
+                    {
+                        // Strict downward 1D pull
+                        float dragDistY = startTouchPos.y - currentTouch.screenPosition.y;
+                        targetDragPower = Mathf.Clamp01(dragDistY / actualMaxDrag);
+                    }
+                    else if (currentTouch.phase == UnityEngine.InputSystem.TouchPhase.Ended ||
+                             currentTouch.phase == UnityEngine.InputSystem.TouchPhase.Canceled)
+                    {
+                        break; // Player released the screen!
+                    }
                 }
             }
 
-            // Smooth the input for buttery frame scrubbing
-            smoothedDragPower = Mathf.Lerp(smoothedDragPower, targetDragPower, Time.deltaTime * 15f);
-            if (timingSlider != null) timingSlider.value = smoothedDragPower;
+            // Smooth power (Using your exact working SmoothDamp)
+            smoothedDragPower = Mathf.SmoothDamp(
+                smoothedDragPower,
+                targetDragPower,
+                ref velocity,
+                0.08f
+            );
 
-            // --- THE SCRUBBING ---
-            // Force the animator to display the exact frame of the Windup animation
-            if (skinManager.currentActiveAnimator != null && isDragging)
-            {
-                // Ensure the string here exactly matches your Windup state name in the Animator!
-                float currentAnimFrame = smoothedDragPower * maxWindupNormalizedTime;
-                skinManager.currentActiveAnimator.Play("Windup", 0, currentAnimFrame);
-                skinManager.currentActiveAnimator.Update(0);
-            }
+            // Update animator
+            if (animator != null)
+                animator.SetFloat("WindupPower", smoothedDragPower);
 
-            // Juice: Weapon Shake at Max Power
+            if (timingSlider)
+                timingSlider.value = smoothedDragPower;
+
+            // Weapon shake at max
             if (skinManager.giantWeaponInScene != null)
             {
                 if (smoothedDragPower > 0.95f)
-                    skinManager.giantWeaponInScene.localRotation = Quaternion.Euler(Random.Range(-3f, 3f), Random.Range(-3f, 3f), Random.Range(-3f, 3f));
+                {
+                    skinManager.giantWeaponInScene.localRotation =
+                        Quaternion.Euler(
+                            Random.Range(-3f, 3f),
+                            Random.Range(-3f, 3f),
+                            Random.Range(-3f, 3f)
+                        );
+                }
                 else
+                {
                     skinManager.giantWeaponInScene.localRotation = Quaternion.identity;
+                }
             }
 
             yield return null;
         }
 
-        // Cleanup visuals
-        if (skinManager.giantWeaponInScene != null) skinManager.giantWeaponInScene.localRotation = Quaternion.identity;
-        if (timingMinigamePanel != null) timingMinigamePanel.SetActive(false);
+        // Cleanup
+        if (timingMinigamePanel) timingMinigamePanel.SetActive(false);
+        if (skinManager.giantWeaponInScene != null)
+            skinManager.giantWeaponInScene.localRotation = Quaternion.identity;
 
-
-        // --- 4. THE FULL RELEASE & SLAP ---
-
-        if (skinManager.currentActiveAnimator != null)
+        // --- RELEASE ---
+        if (animator != null)
         {
-            // UNPAUSE the animator so it plays normally again
-            skinManager.currentActiveAnimator.speed = 1f;
+            animator.SetBool("IsHolding", false);
 
-            // Fire the white arrow transition from Windup to Slap
-            skinManager.currentActiveAnimator.SetTrigger("Release");
+            // small anticipation delay
+            yield return new WaitForSeconds(0.05f);
+
+            animator.SetTrigger("Release");
         }
 
         yield return new WaitForSeconds(impactDelayAfterRelease);
 
+        // --- LAUNCH ---
         CutToCamera(vcamFollow);
 
         float baseLaunchSpeed = GameLevelManager.Instance.GetTotalLaunchSpeed();
-        float finalSpeed = Mathf.Lerp(baseLaunchSpeed * 0.25f, baseLaunchSpeed, smoothedDragPower);
+        float finalPower = Mathf.Pow(smoothedDragPower, 1.5f);
+        float finalSpeed = Mathf.Lerp(baseLaunchSpeed * 0.25f, baseLaunchSpeed, finalPower);
 
         FindObjectOfType<DynamicBoulderCamera>()?.TriggerLaunchSequence();
         boulder.Launch(finalSpeed);
@@ -180,16 +220,16 @@ public class LaunchSequenceManager : MonoBehaviour
         if (skinManager == null) yield break;
 
         Transform weapon = skinManager.giantWeaponInScene;
-        Transform targetSocket = skinManager.currentWeaponSocket;
+        Transform socket = skinManager.currentWeaponSocket;
 
-        if (weapon == null || targetSocket == null) yield break;
+        if (weapon == null || socket == null) yield break;
 
-        weapon.DOMove(targetSocket.position, weaponPickupDuration).SetEase(Ease.InOutSine);
-        weapon.DORotateQuaternion(targetSocket.rotation, weaponPickupDuration).SetEase(Ease.InOutSine);
+        weapon.DOMove(socket.position, 0.5f).SetEase(Ease.InOutSine);
+        weapon.DORotateQuaternion(socket.rotation, 0.5f).SetEase(Ease.InOutSine);
 
-        yield return new WaitForSeconds(weaponPickupDuration);
+        yield return new WaitForSeconds(0.5f);
 
-        weapon.SetParent(targetSocket);
+        weapon.SetParent(socket);
         weapon.localPosition = Vector3.zero;
         weapon.localRotation = Quaternion.identity;
     }
@@ -207,19 +247,18 @@ public class LaunchSequenceManager : MonoBehaviour
     {
         if (boulder == null || skinManager == null || skinManager.visualHolder == null) return;
 
-        float currentBoulderRadius = boulder.transform.localScale.z * 0.5f;
-        Vector3 boulderPos = boulder.transform.position;
-        float perfectZPosition = boulderPos.z - (currentBoulderRadius + baseImpactReach);
+        float radius = boulder.transform.localScale.z * 0.5f;
+        Vector3 pos = boulder.transform.position;
+
+        float z = pos.z - (radius + baseImpactReach);
 
         Transform charRoot = skinManager.visualHolder;
-        charRoot.position = new Vector3(charRoot.position.x, charRoot.position.y, perfectZPosition);
+        charRoot.position = new Vector3(charRoot.position.x, charRoot.position.y, z);
     }
 
     private void OnDestroy()
     {
         if (InputManager.Instance != null)
-        {
             InputManager.Instance.OnLaunchTap -= HandleInitialTap;
-        }
     }
 }

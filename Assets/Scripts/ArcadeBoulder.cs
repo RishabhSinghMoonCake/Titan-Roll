@@ -118,8 +118,13 @@ public class ArcadeBoulder : MonoBehaviour
 
     public void ApplyImpactSlowdown(float speedLossKmh)
     {
-        float newSpeedKmh = currentSpeedKmh - speedLossKmh;
+        // CRITICAL FIX: Read the exact velocity right NOW, not the cached FixedUpdate one.
+        // This guarantees if you hit 3 objects in one frame, the slowdown aggressively stacks!
+        float exactCurrentSpeedKmh = rb.velocity.magnitude * 3.6f;
 
+        if (exactCurrentSpeedKmh < 1f) return;
+
+        float newSpeedKmh = exactCurrentSpeedKmh - speedLossKmh;
         if (newSpeedKmh < 5f) newSpeedKmh = 5f;
 
         rb.velocity = rb.velocity.normalized * (newSpeedKmh / 3.6f);
