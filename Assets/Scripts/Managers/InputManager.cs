@@ -28,6 +28,9 @@ public class InputManager : MonoBehaviour
     private float _targetSteering;
     private bool _isInteracting;
 
+    // NEW: We lock onto the exact finger that touched the screen, ignoring the index number!
+    private Finger _activeFinger;
+
     public float ExternalJoystickInput { get; set; }
 
     void Awake()
@@ -70,10 +73,13 @@ public class InputManager : MonoBehaviour
 
     private void HandleFingerDown(Finger finger)
     {
-        if (Touch.activeTouches.Count > 1) return;
+        // If we are already tracking a finger, ignore any new fingers touching the screen
+        if (_isInteracting) return;
         if (IsPointerOverUI(finger.screenPosition)) return;
 
         _isInteracting = true;
+        _activeFinger = finger; // Lock onto this exact finger
+
         _joystickCenter = finger.screenPosition;
         _targetSteering = 0f;
 
@@ -82,13 +88,21 @@ public class InputManager : MonoBehaviour
 
     private void HandleFingerMove(Finger finger)
     {
-        if (!_isInteracting || finger.index != 0) return;
+        // Only process movement if it's the specific finger we locked onto
+        if (!_isInteracting || finger != _activeFinger) return;
 
         float deltaX = finger.screenPosition.x - _joystickCenter.x;
-        float sensitivity = invertSteering ? -1f : 1f;
 
-        // --- THE NaN FIX ---
-        // Guaranteed to never divide by zero, even if the inspector resets to 0
+        // --- THE FLOATING ANCHOR FIX ---
+        // If the player drags past the joystick radius, pull the center anchor with them!
+        // This completely eliminates the "dragging right but moving left" illusion.
+        if (Mathf.Abs(deltaX) > joystickRadius)
+        {
+            _joystickCenter.x = finger.screenPosition.x - (Mathf.Sign(deltaX) * joystickRadius);
+            deltaX = Mathf.Sign(deltaX) * joystickRadius;
+        }
+
+        float sensitivity = invertSteering ? -1f : 1f;
         float safeRadius = Mathf.Max(joystickRadius, 1f);
         float rawSteer = (deltaX / safeRadius) * sensitivity;
 
@@ -97,9 +111,10 @@ public class InputManager : MonoBehaviour
 
     private void HandleFingerUp(Finger finger)
     {
-        if (!_isInteracting || finger.index != 0) return;
+        if (!_isInteracting || finger != _activeFinger) return;
 
         _isInteracting = false;
+        _activeFinger = null;
         _targetSteering = 0f;
     }
 

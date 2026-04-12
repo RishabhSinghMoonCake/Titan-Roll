@@ -40,6 +40,11 @@ public class GameLevelManager : MonoBehaviour
     [Header("UI System")]
     public UpgradeCardUI[] upgradeCards; // Drag all 3 cards here
 
+    [Header("Optimization & Debug")]
+    public TMPro.TextMeshProUGUI fpsText;
+    private float _deltaTime = 0.0f;
+
+
     private GameObject _currentSkinInstance;
     private int _currentSkinIndex = -1;
 
@@ -51,6 +56,8 @@ public class GameLevelManager : MonoBehaviour
 
     private void Start()
     {
+
+        Application.targetFrameRate = 60;
         currentState = GameState.Idle;
 
         // Note: We REMOVED the OnLaunchTap subscription from here. 
@@ -69,6 +76,26 @@ public class GameLevelManager : MonoBehaviour
         if (currentState == GameState.Launched)
         {
             arcadeBoulder.Steer(InputManager.Instance.SteeringInput);
+        }
+
+
+        // --- SMOOTHED FPS METER ---
+        if (fpsText != null)
+        {
+            // Smooth out the time between frames
+            _deltaTime += (Time.unscaledDeltaTime - _deltaTime) * 0.1f;
+
+            // Only rebuild the UI text every 15 frames to save performance!
+            if (Time.frameCount % 15 == 0)
+            {
+                float fps = 1.0f / _deltaTime;
+                fpsText.text = $"FPS: {Mathf.Ceil(fps)}";
+
+                // Optional: Change color if dropping frames
+                if (fps >= 50f) fpsText.color = Color.green;
+                else if (fps >= 30f) fpsText.color = Color.yellow;
+                else fpsText.color = Color.red;
+            }
         }
     }
 

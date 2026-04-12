@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEngine;
 
 public class TriggeredHerdSpawner : MonoBehaviour
@@ -47,36 +48,33 @@ public class TriggeredHerdSpawner : MonoBehaviour
     private AnimalData[] _herd;
     private bool _hasTriggered = false;
     private int _finishedCount = 0;
+    private bool finishedSpawning = false;  
 
     private void Start()
     {
         if (animalPrefabs == null || animalPrefabs.Length == 0) return;
 
-        // Initialize the block once
         _propBlock = new MaterialPropertyBlock();
-
-        InitializeWarmSpawn();
+        finishedSpawning = false;
+        // Start this as a Coroutine so it can run smoothly over several frames
+        StartCoroutine(InitializeWarmSpawnRoutine());
     }
 
-    private void InitializeWarmSpawn()
+    private IEnumerator InitializeWarmSpawnRoutine()
     {
         int spawnCount = Random.Range(minSpawnCount, maxSpawnCount + 1);
         _herd = new AnimalData[spawnCount];
 
         for (int i = 0; i < spawnCount; i++)
         {
-            // 1. Pick a random animal prefab
             GameObject prefab = animalPrefabs[Random.Range(0, animalPrefabs.Length)];
 
-            // 2. Pick random coordinates within the Warm Spawn box
             float randomX = Random.Range(-spawnWidthX, spawnWidthX);
             float randomZ = Random.Range(warmSpawnStartZ, warmSpawnEndZ);
             Vector3 spawnPos = new Vector3(randomX, transform.position.y, randomZ);
 
-            // 3. Instantiate the animal
             GameObject go = Instantiate(prefab, spawnPos, Quaternion.identity, transform);
 
-            // --- THE BULLETPROOF SHADER FIX ---
             Renderer[] renderers = go.GetComponentsInChildren<Renderer>();
             float uniqueOffset = Random.Range(0f, 100f);
 
@@ -86,17 +84,14 @@ public class TriggeredHerdSpawner : MonoBehaviour
                 _propBlock.SetFloat(RandomOffsetID, uniqueOffset);
                 r.SetPropertyBlock(_propBlock);
             }
-            // ----------------------------------
 
-            // 4. Force them to look directly at the Origin (0,0,0) initially
             Vector3 lookDir = Vector3.zero - spawnPos;
-            lookDir.y = 0; // Keep it perfectly flat on the ground
+            lookDir.y = 0;
             if (lookDir != Vector3.zero)
             {
                 go.transform.rotation = Quaternion.LookRotation(lookDir);
             }
 
-            // 5. Store the mathematical data in our hyper-fast array
             _herd[i] = new AnimalData
             {
                 transform = go.transform,
@@ -106,11 +101,21 @@ public class TriggeredHerdSpawner : MonoBehaviour
                 meanderFreq = Random.Range(meanderSpeed * 0.8f, meanderSpeed * 1.2f),
                 isFinished = false
             };
+
+            // THE FIX: Every 3 animals we build, pause and wait for the next frame!
+            // This prevents the massive FPS freeze at the start of the game.
+            if (i % 3 == 0)
+            {
+                yield return null;
+            }
         }
+
+        finishedSpawning = true;
     }
 
     private void Update()
     {
+        if (!finishedSpawning) return;
         // --- PHASE 1: WAITING FOR THE BOULDER ---
         if (!_hasTriggered)
         {

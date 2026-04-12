@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEngine;
 
 public class HerdSpawner : MonoBehaviour
@@ -37,6 +38,7 @@ public class HerdSpawner : MonoBehaviour
     private float _spawnTimer = 0f;
     private float _currentSpawnInterval = 0f;
     private bool _movingRight;
+    private bool completedSpawning = false;
 
     private void Start()
     {
@@ -46,11 +48,11 @@ public class HerdSpawner : MonoBehaviour
         // Determine direction once so we don't have to calculate it every frame
         _movingRight = startPoint.position.x < endPoint.position.x;
         _currentSpawnInterval = baseSpawnInterval;
-
+        completedSpawning = false;
         InitializePool();
     }
 
-    private void InitializePool()
+    private IEnumerator InitializePool()
     {
         _herd = new AnimalData[poolCapacity];
 
@@ -69,11 +71,20 @@ public class HerdSpawner : MonoBehaviour
                 speed = 0f,
                 isActive = false
             };
+
+            // THE FIX: Every 3 animals we build, pause and wait for the next frame!
+            // This prevents the massive FPS freeze at the start of the game.
+            if (i % 3 == 0)
+            {
+                yield return null;
+            }
         }
+        completedSpawning = true;
     }
 
     private void Update()
     {
+        if (!completedSpawning) return;
         float dt = Time.deltaTime;
 
         // --- 1. SPAWN LOGIC ---

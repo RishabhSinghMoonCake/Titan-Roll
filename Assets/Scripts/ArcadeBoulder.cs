@@ -66,16 +66,16 @@ public class ArcadeBoulder : MonoBehaviour
     {
         if (!isLaunched || timeSinceLaunch < steeringDelay) return;
 
-        // NaN FIX: Ensure we never divide by zero and the Rigidbody velocity isn't already corrupted
         float safeMaxSpeed = Mathf.Max(maxStartLaunchSpeedMs, 1f);
         float currentMag = float.IsNaN(rb.velocity.magnitude) ? 0f : rb.velocity.magnitude;
 
-        float sizeCompensator = transform.localScale.x;
+        // NEW: Force the scale to always be a positive number
+        float sizeCompensator = Mathf.Abs(transform.localScale.x);
+
         float speedFactor = Mathf.Lerp(0.5f, 1.0f, currentMag / safeMaxSpeed);
 
         Vector3 steerDir = Vector3.right * input * (steeringForce * sizeCompensator);
 
-        // Final NaN shield before pushing the boulder
         if (!float.IsNaN(steerDir.x) && !float.IsNaN(speedFactor))
         {
             rb.AddForce(steerDir * speedFactor, ForceMode.Acceleration);
