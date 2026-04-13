@@ -1,10 +1,13 @@
 using Cinemachine;
 using DG.Tweening;
 using System.Collections;
+using System.Collections.Generic; // <-- REQUIRED FOR RAYCAST LISTS
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.InputSystem.EnhancedTouch;
+using UnityEngine.EventSystems;
 using Touch = UnityEngine.InputSystem.EnhancedTouch.Touch;
+using TMPro;
 
 public class LaunchSequenceManager : MonoBehaviour
 {
@@ -29,14 +32,12 @@ public class LaunchSequenceManager : MonoBehaviour
     [Header("UI")]
     public GameObject timingMinigamePanel;
     public Slider timingSlider;
+    public HandTutorial handTutorialUI;
+    public TextMeshProUGUI powerPercentageText;
 
     [Header("Phase Settings")]
-    [Tooltip("The upgrade panel to hide when the game starts")]
     public GameObject upgradePanel;
-    [Tooltip("Seconds to ignore touches after the camera cuts to prevent misfires")]
     public float inputDeadZoneDelay = 0.4f;
-
-    private bool _waitingForFirstTap = true;
 
     private float smoothedDragPower = 0f;
     private float targetDragPower = 0f;
@@ -44,36 +45,78 @@ public class LaunchSequenceManager : MonoBehaviour
 
     private void Start()
     {
-        if (InputManager.Instance != null)
-            InputManager.Instance.OnLaunchTap += HandleInitialTap;
+        InitializeNewRun();
+    }
 
-        if (upgradePanel != null) upgradePanel.transform.localScale = Vector3.one;
+    public void InitializeNewRun()
+    {
+        smoothedDragPower = 0f;
+        targetDragPower = 0f;
+        velocity = 0f;
 
+        if (upgradePanel != null)
+        {
+            upgradePanel.transform.DOKill();
+            upgradePanel.transform.localScale = Vector3.one;
+            upgradePanel.SetActive(true);
+        }
+
+        if (handTutorialUI != null) handTutorialUI.gameObject.SetActive(false);
+        if (powerPercentageText != null) powerPercentageText.gameObject.SetActive(false);
+
+        StopAllCoroutines();
         StartCoroutine(PreLaunchSequence());
     }
 
-    private void HandleInitialTap()
+    // --- THE BULLETPROOF UI RAYCASTER ---
+    private bool IsTouchOverUI(Vector2 screenPosition)
     {
-        if (_waitingForFirstTap) _waitingForFirstTap = false;
+        if (EventSystem.current == null) return false;
+
+        // Create a fake pointer at the exact pixel the player touched
+        PointerEventData eventData = new PointerEventData(EventSystem.current)
+        {
+            position = screenPosition
+        };
+
+        // Shoot a raycast through the UI canvas
+        List<RaycastResult> results = new List<RaycastResult>();
+        EventSystem.current.RaycastAll(eventData, results);
+
+        // If it hit ANYTHING in the UI, return true!
+        return results.Count > 0;
     }
 
     private IEnumerator PreLaunchSequence()
     {
-        // --- IDLE ---
         CutToCamera(vcamIdle);
         if (timingMinigamePanel) timingMinigamePanel.SetActive(false);
         AlignCharacterToBoulder();
 
-        _waitingForFirstTap = true;
-        while (_waitingForFirstTap) yield return null;
+        // WAIT FOR START TAP
+        bool waitingForStart = true;
+        while (waitingForStart)
+        {
+            if (Touch.activeTouches.Count > 0)
+            {
+                var touch = Touch.activeTouches[0];
+                if (touch.phase == UnityEngine.InputSystem.TouchPhase.Began)
+                {
+                    // Pass the EXACT PIXEL coordinate to our new Raycaster
+                    if (!IsTouchOverUI(touch.screenPosition))
+                    {
+                        waitingForStart = false;
+                    }
+                }
+            }
+            yield return null;
+        }
 
-        // --- PICKUP ---
+        // --- PICKUP PHASE ---
         yield return StartCoroutine(FlyWeaponToHand());
 
         var animator = skinManager.currentActiveAnimator;
-
-        if (animator != null)
-            animator.SetTrigger("StartMinigame");
+        if (animator != null) animator.SetTrigger("StartMinigame");
 
         yield return new WaitForSeconds(0.5f);
 
@@ -83,8 +126,17 @@ public class LaunchSequenceManager : MonoBehaviour
         if (timingMinigamePanel) timingMinigamePanel.SetActive(true);
         if (timingSlider) timingSlider.value = 0f;
 
+        if (powerPercentageText != null)
+        {
+            powerPercentageText.gameObject.SetActive(true);
+            powerPercentageText.text = "0%";
+        }
+
+        if (handTutorialUI != null) handTutorialUI.PlayTutorial();
+
         if (upgradePanel != null && upgradePanel.activeSelf)
         {
+            upgradePanel.transform.DOKill();
             upgradePanel.transform.DOScale(Vector3.zero, 0.25f)
                 .SetEase(Ease.InBack)
                 .OnComplete(() => upgradePanel.SetActive(false));
@@ -103,7 +155,6 @@ public class LaunchSequenceManager : MonoBehaviour
         {
             if (Time.time >= safeInputTime)
             {
-                // THE MEMORY LEAK FIX: We ONLY look at the fresh touches for this exact frame
                 var touches = Touch.activeTouches;
 
                 if (!isDragging && touches.Count > 0)
@@ -112,13 +163,15 @@ public class LaunchSequenceManager : MonoBehaviour
                     {
                         if (touch.phase == UnityEngine.InputSystem.TouchPhase.Began)
                         {
+                            // Block drags that start on UI panels
+                            if (IsTouchOverUI(touch.screenPosition)) continue;
+
                             isDragging = true;
                             activeFinger = touch.finger;
                             startTouchPos = touch.screenPosition;
 
-                            if (animator != null)
-                                animator.SetBool("IsHolding", true);
-
+                            if (handTutorialUI != null) handTutorialUI.StopTutorial();
+                            if (animator != null) animator.SetBool("IsHolding", true);
                             break;
                         }
                     }
@@ -127,7 +180,6 @@ public class LaunchSequenceManager : MonoBehaviour
                 {
                     bool fingerStillOnScreen = false;
 
-                    // Manually check if our specific finger is still touching the screen this frame
                     foreach (var touch in touches)
                     {
                         if (touch.finger == activeFinger)
@@ -143,44 +195,33 @@ public class LaunchSequenceManager : MonoBehaviour
                             else if (touch.phase == UnityEngine.InputSystem.TouchPhase.Ended ||
                                      touch.phase == UnityEngine.InputSystem.TouchPhase.Canceled)
                             {
-                                isDragging = false; // Player lifted their finger
+                                isDragging = false;
                             }
-
-                            break; // Found our finger, stop looping
+                            break;
                         }
                     }
 
-                    // If they lifted the finger, OR the finger data vanished from the screen array, break!
-                    if (!fingerStillOnScreen || !isDragging)
-                    {
-                        break;
-                    }
+                    if (!fingerStillOnScreen || !isDragging) break;
                 }
             }
 
-            smoothedDragPower = Mathf.SmoothDamp(
-                smoothedDragPower,
-                targetDragPower,
-                ref velocity,
-                0.08f
-            );
+            smoothedDragPower = Mathf.SmoothDamp(smoothedDragPower, targetDragPower, ref velocity, 0.08f);
 
-            if (animator != null)
-                animator.SetFloat("WindupPower", smoothedDragPower);
+            if (animator != null) animator.SetFloat("WindupPower", smoothedDragPower);
+            if (timingSlider) timingSlider.value = smoothedDragPower;
 
-            if (timingSlider)
-                timingSlider.value = smoothedDragPower;
+            if (powerPercentageText != null)
+            {
+                int percent = Mathf.RoundToInt(Mathf.Clamp01(smoothedDragPower) * 100f);
+                powerPercentageText.text = $"{percent}%";
+            }
 
             if (skinManager.giantWeaponInScene != null)
             {
                 if (smoothedDragPower > 0.95f)
                 {
-                    skinManager.giantWeaponInScene.localRotation =
-                        Quaternion.Euler(
-                            Random.Range(-3f, 3f),
-                            Random.Range(-3f, 3f),
-                            Random.Range(-3f, 3f)
-                        );
+                    skinManager.giantWeaponInScene.localRotation = Quaternion.Euler(
+                        Random.Range(-3f, 3f), Random.Range(-3f, 3f), Random.Range(-3f, 3f));
                 }
                 else
                 {
@@ -193,6 +234,8 @@ public class LaunchSequenceManager : MonoBehaviour
 
         // --- CLEANUP & RELEASE ---
         if (timingMinigamePanel) timingMinigamePanel.SetActive(false);
+        if (powerPercentageText != null) powerPercentageText.gameObject.SetActive(false);
+
         if (skinManager.giantWeaponInScene != null)
             skinManager.giantWeaponInScene.localRotation = Quaternion.identity;
 
@@ -205,11 +248,11 @@ public class LaunchSequenceManager : MonoBehaviour
 
         yield return new WaitForSeconds(impactDelayAfterRelease);
 
-        // --- LAUNCH ---
         CutToCamera(vcamFollow);
 
+        float clampedPower = Mathf.Clamp01(smoothedDragPower);
         float baseLaunchSpeed = GameLevelManager.Instance.GetTotalLaunchSpeed();
-        float finalPower = Mathf.Pow(smoothedDragPower, 1.5f);
+        float finalPower = Mathf.Pow(clampedPower, 1.5f);
         float finalSpeed = Mathf.Lerp(baseLaunchSpeed * 0.25f, baseLaunchSpeed, finalPower);
 
         FindObjectOfType<DynamicBoulderCamera>()?.TriggerLaunchSequence();
@@ -227,6 +270,9 @@ public class LaunchSequenceManager : MonoBehaviour
 
         if (weapon == null || socket == null) yield break;
 
+        weapon.DOKill();
+        weapon.SetParent(null);
+
         weapon.DOMove(socket.position, 0.5f).SetEase(Ease.InOutSine);
         weapon.DORotateQuaternion(socket.rotation, 0.5f).SetEase(Ease.InOutSine);
 
@@ -242,26 +288,25 @@ public class LaunchSequenceManager : MonoBehaviour
         if (vcamIdle) vcamIdle.Priority = 10;
         if (vcamMinigame) vcamMinigame.Priority = 10;
         if (vcamFollow) vcamFollow.Priority = 10;
-
         if (targetCam) targetCam.Priority = 20;
     }
 
     private void AlignCharacterToBoulder()
     {
         if (boulder == null || skinManager == null || skinManager.visualHolder == null) return;
-
         float radius = boulder.transform.localScale.z * 0.5f;
         Vector3 pos = boulder.transform.position;
-
         float z = pos.z - (radius + baseImpactReach);
-
         Transform charRoot = skinManager.visualHolder;
         charRoot.position = new Vector3(charRoot.position.x, charRoot.position.y, z);
     }
 
     private void OnDestroy()
     {
-        if (InputManager.Instance != null)
-            InputManager.Instance.OnLaunchTap -= HandleInitialTap;
+        if (skinManager != null && skinManager.giantWeaponInScene != null)
+        {
+            skinManager.giantWeaponInScene.DOKill();
+        }
+        if (upgradePanel != null) upgradePanel.transform.DOKill();
     }
 }

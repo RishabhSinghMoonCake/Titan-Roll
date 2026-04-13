@@ -133,3 +133,5 @@ MonoBehaviour:
   toughnessLevel: 30
   fracturedPrefab: {fileID: 0}
   dustEffectPrefab: {fileID: 0}
+  floatingTextPrefab: {fileID: 7755895783338873990, guid: 031f0118b78997e4faffa507c7c71815,
+    type: 3}

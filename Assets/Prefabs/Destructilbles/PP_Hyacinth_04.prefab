@@ -13,7 +13,7 @@ GameObject:
   - component: {fileID: 27318893370932139}
   - component: {fileID: 4772223939424639575}
   - component: {fileID: -8542152613008580544}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: PP_Hyacinth_04
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -118,7 +118,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1825f86dea544914296c3a790cca8549, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  resistanceMomentum: 20
-  hardnessFactor: 0.2
+  toughnessLevel: 1
   fracturedPrefab: {fileID: 0}
   dustEffectPrefab: {fileID: 0}
+  floatingTextPrefab: {fileID: 7755895783338873990, guid: 031f0118b78997e4faffa507c7c71815,
+    type: 3}

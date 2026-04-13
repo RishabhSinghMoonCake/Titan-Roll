@@ -1,4 +1,7 @@
+using TMPro;
 using UnityEngine;
+using DG.Tweening;
+using Cinemachine;
 
 [RequireComponent(typeof(Rigidbody))]
 public class ArcadeBoulder : MonoBehaviour
@@ -23,8 +26,16 @@ public class ArcadeBoulder : MonoBehaviour
     private float currentSpeedKmh;
     private float timeSinceLaunch = 0f;
     private float maxStartLaunchSpeedMs;
-
     private float stuckTimer = 0f;
+
+    [Header("UI & Distance")]
+    [SerializeField] private TextMeshProUGUI distanceDisplay;
+
+    private float _startZ;
+    private int _lastDisplayedDistance = -1;
+    private int _nextPopDistance = 500;
+
+    private CinemachineImpulseSource _impulseSource;
 
     public static ArcadeBoulder Instance { get; private set; }
 
@@ -40,11 +51,17 @@ public class ArcadeBoulder : MonoBehaviour
         rb.interpolation = RigidbodyInterpolation.Interpolate;
         rb.collisionDetectionMode = CollisionDetectionMode.Continuous;
         rb.isKinematic = true;
-        // THE FIX: Unlock the rotation speed limit! (Default is only 7)
         rb.maxAngularVelocity = 150f;
+
+        _impulseSource = GetComponent<CinemachineImpulseSource>();
+
+        if (distanceDisplay != null)
+        {
+            distanceDisplay.alpha = 0f;
+        }
     }
 
-    public void Launch(float launchSpeedKmh)
+    public void Launch(float launchSpeedKmh, float powerPercentage = 1f)
     {
         isLaunched = true;
         timeSinceLaunch = 0f;
@@ -54,7 +71,9 @@ public class ArcadeBoulder : MonoBehaviour
         transform.rotation = Quaternion.identity;
         rb.angularVelocity = Vector3.zero;
 
-        currentStamina = GameLevelManager.Instance.GetLaunchStamina();
+        float baseStamina = GameLevelManager.Instance.GetLaunchStamina();
+        float staminaMultiplier = Mathf.Max(powerPercentage, 0.15f);
+        currentStamina = baseStamina * staminaMultiplier;
         startingStamina = currentStamina;
 
         float speedMs = launchSpeedKmh / 3.6f;
@@ -62,6 +81,62 @@ public class ArcadeBoulder : MonoBehaviour
 
         Vector3 launchDir = (Vector3.forward + (Vector3.up * 0.15f)).normalized;
         rb.velocity = launchDir * speedMs;
+
+        _startZ = transform.position.z;
+        _lastDisplayedDistance = -1;
+        _nextPopDistance = 500;
+
+        if (distanceDisplay != null)
+        {
+            distanceDisplay.DOKill();
+            distanceDisplay.transform.DOKill(true);
+
+            distanceDisplay.text = "0 m";
+            distanceDisplay.transform.localScale = Vector3.one;
+            distanceDisplay.color = Color.white;
+
+            distanceDisplay.DOFade(1f, 0.5f);
+        }
+    }
+
+    private void Update()
+    {
+        if (!isLaunched || distanceDisplay == null) return;
+
+        float currentDistance = transform.position.z - _startZ;
+        if (currentDistance < 0) currentDistance = 0;
+
+        int currentDistanceInt = Mathf.FloorToInt(currentDistance);
+
+        if (currentDistanceInt > _lastDisplayedDistance)
+        {
+            _lastDisplayedDistance = currentDistanceInt;
+            UpdateDistanceUI(currentDistanceInt);
+        }
+    }
+
+    private void UpdateDistanceUI(int distance)
+    {
+        if (distance < 1000)
+        {
+            distanceDisplay.text = $"{distance} m";
+        }
+        else
+        {
+            float km = distance / 1000f;
+            distanceDisplay.text = $"{km:F1} km";
+        }
+
+        if (distance >= _nextPopDistance)
+        {
+            _nextPopDistance += 500;
+
+            distanceDisplay.transform.DOKill(true);
+            distanceDisplay.transform.localScale = Vector3.one;
+
+            distanceDisplay.transform.DOPunchScale(new Vector3(0.5f, 0.5f, 0.5f), 0.5f, vibrato: 5, elasticity: 1f);
+            distanceDisplay.DOColor(new Color(1f, 0.8f, 0f, 1f), 0.15f).SetLoops(2, LoopType.Yoyo);
+        }
     }
 
     public void Steer(float input)
@@ -71,9 +146,7 @@ public class ArcadeBoulder : MonoBehaviour
         float safeMaxSpeed = Mathf.Max(maxStartLaunchSpeedMs, 1f);
         float currentMag = float.IsNaN(rb.velocity.magnitude) ? 0f : rb.velocity.magnitude;
 
-        // NEW: Force the scale to always be a positive number
         float sizeCompensator = Mathf.Abs(transform.localScale.x);
-
         float speedFactor = Mathf.Lerp(0.5f, 1.0f, currentMag / safeMaxSpeed);
 
         Vector3 steerDir = Vector3.right * input * (steeringForce * sizeCompensator);
@@ -88,7 +161,6 @@ public class ArcadeBoulder : MonoBehaviour
     {
         if (!isLaunched) return;
 
-        // If velocity somehow got corrupted by an outside force, reset it immediately
         if (float.IsNaN(rb.velocity.x)) rb.velocity = Vector3.zero;
 
         timeSinceLaunch += Time.fixedDeltaTime;
@@ -112,9 +184,7 @@ public class ArcadeBoulder : MonoBehaviour
         }
 
         rb.AddForce(Physics.gravity * gravityMultiplier, ForceMode.Acceleration);
-        // --- THE FIXED LATERAL FRICTION ---
-        // We use World X (rb.velocity.x) instead of the tumbling local axes.
-        // This guarantees friction only stops sideways sliding, and never pulls the ball backward or right!
+
         float sidewaysVelocity = rb.velocity.x;
         float sidewaysDrag = -sidewaysVelocity * sideFriction;
         rb.AddForce(Vector3.right * sidewaysDrag, ForceMode.Acceleration);
@@ -125,8 +195,6 @@ public class ArcadeBoulder : MonoBehaviour
             if (currentStamina < 0) currentStamina = 0;
         }
 
-        // --- THE NaN FIX ---
-        // Ensure dynamicBrakeThreshold is never 0, preventing division by zero.
         float dynamicBrakeThreshold = Mathf.Max(startingStamina * brakingZonePercentage, 0.01f);
 
         if (currentStamina <= dynamicBrakeThreshold)
@@ -160,6 +228,8 @@ public class ArcadeBoulder : MonoBehaviour
     {
         isLaunched = false;
         rb.isKinematic = true;
+        HideDistanceDisplay();
+
         Debug.Log("ArcadeBoulder: Run Finished smoothly.");
         OnRunFinished?.Invoke();
     }
@@ -177,7 +247,26 @@ public class ArcadeBoulder : MonoBehaviour
         currentStamina -= staminaPenalty;
         if (currentStamina < 0) currentStamina = 0;
 
-        Debug.Log($"<color=orange>[IMPACT]</color> Damage Taken: <b>{damagePercentage * 100f:F1}%</b> | Speed dropped to: {newSpeedKmh:F0} km/h | Stamina Lost: {staminaPenalty:F1}s");
+        if (_impulseSource != null)
+        {
+            float shakeForce = Mathf.Lerp(0.2f, 1.5f, damagePercentage);
+            _impulseSource.GenerateImpulse(shakeForce);
+        }
+
+        if (damagePercentage > 0.15f)
+        {
+            StartCoroutine(HitStopRoutine(damagePercentage));
+        }
+
+        Debug.Log($"<color=orange>[IMPACT]</color> Damage: {damagePercentage * 100f:F1}% | Speed: {newSpeedKmh:F0} km/h");
+    }
+
+    private System.Collections.IEnumerator HitStopRoutine(float damagePercentage)
+    {
+        Time.timeScale = 0.1f;
+        float freezeDuration = 0.05f + (damagePercentage * 0.1f);
+        yield return new WaitForSecondsRealtime(freezeDuration);
+        Time.timeScale = 1f;
     }
 
     public void ApplyBonk()
@@ -188,7 +277,19 @@ public class ArcadeBoulder : MonoBehaviour
         rb.AddForce(-Vector3.forward * 10f, ForceMode.Impulse);
 
         isLaunched = false;
+        HideDistanceDisplay();
+
         Debug.Log("ArcadeBoulder: BONK! Hit a solid wall.");
         OnRunFinished?.Invoke();
+    }
+
+    private void HideDistanceDisplay()
+    {
+        if (distanceDisplay != null)
+        {
+            distanceDisplay.DOKill();
+            distanceDisplay.transform.DOKill(true);
+            distanceDisplay.DOFade(0f, 0.5f);
+        }
     }
 }

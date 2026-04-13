@@ -13,7 +13,7 @@ GameObject:
   - component: {fileID: 3229604626257403868}
   - component: {fileID: 690451614722598207}
   - component: {fileID: 9083167814212763611}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: PP_Daffodil_03
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -121,3 +121,5 @@ MonoBehaviour:
   toughnessLevel: 1
   fracturedPrefab: {fileID: 0}
   dustEffectPrefab: {fileID: 0}
+  floatingTextPrefab: {fileID: 7755895783338873990, guid: 031f0118b78997e4faffa507c7c71815,
+    type: 3}

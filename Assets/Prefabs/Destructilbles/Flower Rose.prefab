@@ -93,6 +93,11 @@ PrefabInstance:
       propertyPath: m_Name
       value: Flower Rose
       objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: 5c2e7e2c205ec7f4d8116c2cd29e1a53,
+        type: 3}
+      propertyPath: m_Layer
+      value: 8
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -148,11 +153,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   toughnessLevel: 1
-  minResistance: 50
-  minHardness: 0.2
-  minBaseReward: 2
-  maxResistance: 25000
-  maxHardness: 1
-  maxBaseReward: 50000
   fracturedPrefab: {fileID: 0}
   dustEffectPrefab: {fileID: 0}
+  floatingTextPrefab: {fileID: 7755895783338873990, guid: 031f0118b78997e4faffa507c7c71815,
+    type: 3}

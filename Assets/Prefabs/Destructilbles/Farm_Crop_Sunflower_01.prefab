@@ -100,6 +100,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 919132149155446097, guid: b7848880555c77f45ac714ebd274c423,
         type: 3}
+      propertyPath: m_Layer
+      value: 8
+      objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: b7848880555c77f45ac714ebd274c423,
+        type: 3}
       propertyPath: m_IsActive
       value: 1
       objectReference: {fileID: 0}
@@ -134,10 +139,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1825f86dea544914296c3a790cca8549, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  resistanceMomentum: 10
-  hardnessFactor: 0.2
+  toughnessLevel: 1
   fracturedPrefab: {fileID: 0}
   dustEffectPrefab: {fileID: 0}
+  floatingTextPrefab: {fileID: 7755895783338873990, guid: 031f0118b78997e4faffa507c7c71815,
+    type: 3}
 --- !u!136 &-6574469286610284739
 CapsuleCollider:
   m_ObjectHideFlags: 0

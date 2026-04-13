@@ -48,24 +48,30 @@ public class Destructible : MonoBehaviour
             ArcadeBoulder boulder = other.GetComponent<ArcadeBoulder>();
             if (boulder == null) return;
 
-            float playerMass = other.attachedRigidbody ? other.attachedRigidbody.mass : 50f;
             float playerSpeedMs = boulder.GetCurrentSpeedMs();
 
-            // --- 1. THE GATEKEEPER ---
+            // --- 1. THE MASS TRAP FIX ---
+            // Unity defaults Rigidbody mass to 1. We force a minimum of 50 so the math never breaks!
+            float playerMass = other.attachedRigidbody ? Mathf.Max(other.attachedRigidbody.mass, 50f) : 50f;
+
+            // --- 2. THE GATEKEEPER ---
             if (playerMass < _actualRequiredMass)
             {
                 boulder.ApplyBonk();
                 return;
             }
 
-            // --- 2. THE NEW STAMINA/DAMAGE MATH ---
-
-            // Get the player's raw Strength Level (1 to ~50)
+            // --- 3. THE DEATH-SPIRAL FIX ---
             int strengthLevel = PlayerDataManager.Instance.data.strengthLevel;
 
-            // Impact Power is now driven purely by Mass and Strength Level.
-            // A multiplier of 15f keeps early game identical, but scales beautifully to late game.
-            float impactPower = playerMass * strengthLevel * 15f;
+            // We clamp the speed to a minimum of 10m/s for the calculation. 
+            // This guarantees you never lose your sheer strength just because you slowed down!
+            float speedFactor = Mathf.Clamp(playerSpeedMs, 10f, 100f) * 0.5f;
+
+            // --- 4. THE BASE POWER BOOST ---
+            // We add a baseline flat power (strength * 100) so even at a dead stop, 
+            // a Level 12 boulder will effortlessly crush a Level 1 flower.
+            float impactPower = (playerMass * strengthLevel * speedFactor) + (strengthLevel * 100f);
 
             if (impactPower >= _actualResistance)
             {
@@ -73,14 +79,26 @@ public class Destructible : MonoBehaviour
                 _isBroken = true;
 
                 float powerRatioUsed = _actualResistance / impactPower;
-                float damagePercentage = Mathf.Clamp01(powerRatioUsed * _actualHardness);
 
-                // Instead of passing KM/H to lose, we pass the Percentage of Stamina to lose!
+                // THE PAPER-MACHE RULE:
+                // If our power is 10x higher than the resistance (powerRatioUsed < 0.1f), 
+                // we plow through it taking 0% damage!
+                float damagePercentage = 0f;
+                if (powerRatioUsed > 0.1f)
+                {
+                    damagePercentage = Mathf.Clamp01(powerRatioUsed * _actualHardness);
+                }
+
                 boulder.ApplyImpactSlowdown(damagePercentage);
 
                 if (RewardManager.Instance != null)
                 {
                     RewardManager.Instance.ProcessDestructionReward(_actualBaseReward, transform.position.z);
+                }
+
+                if (BoulderComboText.Instance != null)
+                {
+                    BoulderComboText.Instance.AddGold(_actualBaseReward);
                 }
 
                 Vector3 estimatedVel = other.attachedRigidbody ? other.attachedRigidbody.velocity : Vector3.forward * playerSpeedMs;
