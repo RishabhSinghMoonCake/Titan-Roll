@@ -238,6 +238,9 @@ public class ArcadeBoulder : MonoBehaviour
 
     public void ApplyImpactSlowdown(float damagePercentage)
     {
+        // 1. EARLY EXIT: 0% damage skips the math, slowdown, and shake entirely
+        if (damagePercentage <= 0f) return;
+
         float newSpeedKmh = currentSpeedKmh * (1f - damagePercentage);
         if (newSpeedKmh < 5f) newSpeedKmh = 5f;
 
@@ -247,12 +250,24 @@ public class ArcadeBoulder : MonoBehaviour
         currentStamina -= staminaPenalty;
         if (currentStamina < 0) currentStamina = 0;
 
+        // 2. THE 90% REDUCED SHAKE FIX
         if (_impulseSource != null)
         {
-            float shakeForce = Mathf.Lerp(0.2f, 1.5f, damagePercentage);
-            _impulseSource.GenerateImpulse(shakeForce);
+            if (damagePercentage >= 0.20f)
+            {
+                // Heavy impacts: Was 1.0f to 2.5f -> Now 0.1f to 0.25f
+                float shakeForce = Mathf.Lerp(0.1f, 0.25f, damagePercentage);
+                _impulseSource.GenerateImpulse(shakeForce);
+            }
+            else if (damagePercentage >= 0.05f)
+            {
+                // Minor impacts: Was 0.2f to 0.6f -> Now 0.02f to 0.06f
+                float shakeForce = Mathf.Lerp(0.02f, 0.06f, damagePercentage);
+                _impulseSource.GenerateImpulse(shakeForce);
+            }
         }
 
+        // Trigger the Hit-Stop freeze only on big hits
         if (damagePercentage > 0.15f)
         {
             StartCoroutine(HitStopRoutine(damagePercentage));
