@@ -134,7 +134,9 @@ public class Destructible : MonoBehaviour
         {
             ObjectPooler.Instance.Spawn(dustEffectPrefab, hitPoint, Quaternion.identity);
         }
-
-        Destroy(gameObject);
+        if(gameObject.GetComponentInParent<Transform>() == null)
+            Destroy(gameObject);
+        else
+            Destroy(gameObject.GetComponentInParent<Transform>().gameObject);
     }
 }

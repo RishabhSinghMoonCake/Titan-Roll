@@ -51,7 +51,7 @@ public class ArcadeBoulder : MonoBehaviour
         rb.interpolation = RigidbodyInterpolation.Interpolate;
         rb.collisionDetectionMode = CollisionDetectionMode.Continuous;
         rb.isKinematic = true;
-        rb.maxAngularVelocity = 150f;
+        rb.maxAngularVelocity = 1000f;
 
         _impulseSource = GetComponent<CinemachineImpulseSource>();
 
