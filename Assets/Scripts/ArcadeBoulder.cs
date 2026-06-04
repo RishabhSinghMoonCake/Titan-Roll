@@ -31,6 +31,13 @@ public class ArcadeBoulder : MonoBehaviour
     [Header("UI & Distance")]
     [SerializeField] private TextMeshProUGUI distanceDisplay;
 
+    [Header("Camera Tracking")]
+    public Transform cameraTarget; // We will create this in the editor!
+
+    [Header("Visuals")]
+    public Transform visualMesh; // Drag your child 3D model here in the inspector
+    public float visualRollSpeedMultiplier = 50f; // Tweak this to make it look perfect
+
     private float _startZ;
     private int _lastDisplayedDistance = -1;
     private int _nextPopDistance = 500;
@@ -113,6 +120,47 @@ public class ArcadeBoulder : MonoBehaviour
             _lastDisplayedDistance = currentDistanceInt;
             UpdateDistanceUI(currentDistanceInt);
         }
+
+        // --- NEW: THE FAKE ROLL ---
+        if (visualMesh != null && rb.velocity.sqrMagnitude > 0.1f)
+        {
+            // Calculate how fast we should spin based on our actual speed
+            float speed = rb.velocity.magnitude;
+
+            // We divide by scale so a massive Level 50 boulder visually rotates slower than a tiny Level 1 boulder
+            float rotationStep = (speed / visualMesh.lossyScale.x) * visualRollSpeedMultiplier * Time.deltaTime;
+
+            // Find the axis to roll on (perpendicular to our movement)
+            Vector3 rollAxis = Vector3.Cross(Vector3.up, rb.velocity.normalized);
+
+            // Spin the mesh!
+            visualMesh.Rotate(rollAxis, rotationStep, Space.World);
+        }
+    }
+
+    private void LateUpdate()
+    {
+        if (!isLaunched || cameraTarget == null) return;
+
+        // 1. THE SUSPENSION: Snap X and Z instantly, but smoothly Lerp the Y axis!
+        Vector3 newTargetPos = transform.position;
+
+        // Time.deltaTime * 15f is the "stiffness" of the suspension. 
+        // Lower numbers make it softer, higher numbers make it stiffer.
+        newTargetPos.y = Mathf.Lerp(cameraTarget.position.y, transform.position.y, Time.deltaTime * 15f);
+
+        cameraTarget.position = newTargetPos;
+
+        // 2. Rotate to face the exact direction we are rolling
+        if (rb.velocity.sqrMagnitude > 1f)
+        {
+            Vector3 flatVelocity = new Vector3(rb.velocity.x, 0, rb.velocity.z).normalized;
+            if (flatVelocity != Vector3.zero)
+            {
+                Quaternion targetRotation = Quaternion.LookRotation(flatVelocity);
+                cameraTarget.rotation = Quaternion.Slerp(cameraTarget.rotation, targetRotation, Time.deltaTime * 10f);
+            }
+        }
     }
 
     private void UpdateDistanceUI(int distance)
@@ -143,18 +191,12 @@ public class ArcadeBoulder : MonoBehaviour
     {
         if (!isLaunched || timeSinceLaunch < steeringDelay) return;
 
-        float safeMaxSpeed = Mathf.Max(maxStartLaunchSpeedMs, 1f);
-        float currentMag = float.IsNaN(rb.velocity.magnitude) ? 0f : rb.velocity.magnitude;
+        // Turn the velocity vector left/right like a steering wheel!
+        float turnAmount = input * steeringForce * Time.deltaTime;
 
-        float sizeCompensator = Mathf.Abs(transform.localScale.x);
-        float speedFactor = Mathf.Lerp(0.5f, 1.0f, currentMag / safeMaxSpeed);
-
-        Vector3 steerDir = Vector3.right * input * (steeringForce * sizeCompensator);
-
-        if (!float.IsNaN(steerDir.x) && !float.IsNaN(speedFactor))
-        {
-            rb.AddForce(steerDir * speedFactor, ForceMode.Acceleration);
-        }
+        // Physically rotate our momentum
+        Quaternion turnRotation = Quaternion.Euler(0f, turnAmount, 0f);
+        rb.velocity = turnRotation * rb.velocity;
     }
 
     void FixedUpdate()
@@ -185,9 +227,6 @@ public class ArcadeBoulder : MonoBehaviour
 
         rb.AddForce(Physics.gravity * gravityMultiplier, ForceMode.Acceleration);
 
-        float sidewaysVelocity = rb.velocity.x;
-        float sidewaysDrag = -sidewaysVelocity * sideFriction;
-        rb.AddForce(Vector3.right * sidewaysDrag, ForceMode.Acceleration);
 
         if (currentStamina > 0)
         {

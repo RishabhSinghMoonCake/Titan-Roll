@@ -33,6 +33,11 @@ public class GameLevelManager : MonoBehaviour
     public float baseLaunchSpeed = 140f;
     public float baseMass = 50f; // Base mass for level 1 (can be used in calculations or just as a reference)
     public float speedPerStrengthLevel = 14f;
+    [Header("Progression Curves")]
+    [Tooltip("Draw how fast the boulder gets from Lv 1 to Lv 40")]
+    public AnimationCurve speedCurve;
+    [Tooltip("Draw how much stamina you get from Lv 1 to Lv 40")]
+    public AnimationCurve staminaCurve;
 
     [Header("Camera")]
     public DynamicBoulderCamera dynamicCamera;
@@ -210,20 +215,23 @@ public class GameLevelManager : MonoBehaviour
     {
         int strengthLvl = PlayerDataManager.Instance.data.strengthLevel;
 
-        // Starts at 30 km/h. At level 40, it caps exactly at 150 km/h.
-        // It uses a nice curve so early levels feel impactful, but it flattens out later.
-        float speedKmh = Mathf.Lerp(60f, 350f, (strengthLvl - 1) / 39f);
+        // t is our progress from 0.0 (Level 1) to 1.0 (Level 40)
+        float t = Mathf.Clamp01((strengthLvl - 1) / 39f);
 
-        return speedKmh; // Remember, ArcadeBoulder converts this to m/s!
+        // We ask the visual graph what percentage we should be at!
+        float evaluatedCurve = speedCurve.Evaluate(t);
+
+        return Mathf.Lerp(60f, 450f, evaluatedCurve);
     }
 
     public float GetLaunchStamina()
     {
         int strengthLvl = PlayerDataManager.Instance.data.strengthLevel;
+        float t = Mathf.Clamp01((strengthLvl - 1) / 39f);
 
-        // Level 1 = 5 seconds of cruising. 
-        // Level 40 = 72 seconds of cruising (which equals exactly 3000 meters at 150km/h!)
-        return Mathf.Lerp(6f, 72f, (strengthLvl - 1) / 39f);
+        float evaluatedCurve = staminaCurve.Evaluate(t);
+
+        return Mathf.Lerp(6f, 60f, evaluatedCurve);
     }
 
     // --- END RUN LOGIC ---
