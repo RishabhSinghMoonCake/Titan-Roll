@@ -10,7 +10,7 @@ public class ArcadeBoulder : MonoBehaviour
 
     [Header("Arcade Tuning")]
     public float gravityMultiplier = 2.5f;
-    public float sideFriction = 5f;
+    public float sideFriction = 5f; // Lower this if the steering still feels too "harsh" or sticky
     public float steeringForce = 40f;
     public float steeringDelay = 0.5f;
 
@@ -28,15 +28,18 @@ public class ArcadeBoulder : MonoBehaviour
     private float maxStartLaunchSpeedMs;
     private float stuckTimer = 0f;
 
+    // Tracks the intended direction to counter terrain drift
+    private Vector3 intendedHeading;
+
     [Header("UI & Distance")]
     [SerializeField] private TextMeshProUGUI distanceDisplay;
 
     [Header("Camera Tracking")]
-    public Transform cameraTarget; // We will create this in the editor!
+    public Transform cameraTarget;
 
     [Header("Visuals")]
-    public Transform visualMesh; // Drag your child 3D model here in the inspector
-    public float visualRollSpeedMultiplier = 50f; // Tweak this to make it look perfect
+    public Transform visualMesh;
+    public float visualRollSpeedMultiplier = 50f;
 
     private float _startZ;
     private int _lastDisplayedDistance = -1;
@@ -89,6 +92,9 @@ public class ArcadeBoulder : MonoBehaviour
         Vector3 launchDir = (Vector3.forward + (Vector3.up * 0.15f)).normalized;
         rb.velocity = launchDir * speedMs;
 
+        // Reset our straight heading on launch
+        intendedHeading = Vector3.forward;
+
         _startZ = transform.position.z;
         _lastDisplayedDistance = -1;
         _nextPopDistance = 500;
@@ -121,19 +127,11 @@ public class ArcadeBoulder : MonoBehaviour
             UpdateDistanceUI(currentDistanceInt);
         }
 
-        // --- NEW: THE FAKE ROLL ---
         if (visualMesh != null && rb.velocity.sqrMagnitude > 0.1f)
         {
-            // Calculate how fast we should spin based on our actual speed
             float speed = rb.velocity.magnitude;
-
-            // We divide by scale so a massive Level 50 boulder visually rotates slower than a tiny Level 1 boulder
             float rotationStep = (speed / visualMesh.lossyScale.x) * visualRollSpeedMultiplier * Time.deltaTime;
-
-            // Find the axis to roll on (perpendicular to our movement)
             Vector3 rollAxis = Vector3.Cross(Vector3.up, rb.velocity.normalized);
-
-            // Spin the mesh!
             visualMesh.Rotate(rollAxis, rotationStep, Space.World);
         }
     }
@@ -142,16 +140,10 @@ public class ArcadeBoulder : MonoBehaviour
     {
         if (!isLaunched || cameraTarget == null) return;
 
-        // 1. THE SUSPENSION: Snap X and Z instantly, but smoothly Lerp the Y axis!
         Vector3 newTargetPos = transform.position;
-
-        // Time.deltaTime * 15f is the "stiffness" of the suspension. 
-        // Lower numbers make it softer, higher numbers make it stiffer.
         newTargetPos.y = Mathf.Lerp(cameraTarget.position.y, transform.position.y, Time.deltaTime * 15f);
-
         cameraTarget.position = newTargetPos;
 
-        // 2. Rotate to face the exact direction we are rolling
         if (rb.velocity.sqrMagnitude > 1f)
         {
             Vector3 flatVelocity = new Vector3(rb.velocity.x, 0, rb.velocity.z).normalized;
@@ -191,11 +183,11 @@ public class ArcadeBoulder : MonoBehaviour
     {
         if (!isLaunched || timeSinceLaunch < steeringDelay) return;
 
-        // Turn the velocity vector left/right like a steering wheel!
         float turnAmount = input * steeringForce * Time.deltaTime;
-
-        // Physically rotate our momentum
         Quaternion turnRotation = Quaternion.Euler(0f, turnAmount, 0f);
+
+        // Rotate both our actual velocity AND our intended tracking heading
+        intendedHeading = turnRotation * intendedHeading;
         rb.velocity = turnRotation * rb.velocity;
     }
 
@@ -208,8 +200,34 @@ public class ArcadeBoulder : MonoBehaviour
         timeSinceLaunch += Time.fixedDeltaTime;
         currentSpeedKmh = rb.velocity.magnitude * 3.6f;
 
+        // --- FIX 1: STOP IF ROLLING BACKWARDS ---
+        // If the boulder rolls backward on the Z-axis, end the run immediately
+        if (rb.velocity.z < -0.2f)
+        {
+            ApplyBraking();
+            return;
+        }
+
+        // --- FIX 2: HORIZONTAL-ONLY ARCADE GRIP ---
+        // Preserve the vertical velocity so gravity works perfectly
+        float currentY = rb.velocity.y;
+
         Vector3 flatVelocity = new Vector3(rb.velocity.x, 0, rb.velocity.z);
-        float flatSpeedKmh = flatVelocity.magnitude * 3.6f;
+        float flatSpeedMs = flatVelocity.magnitude;
+
+        if (flatSpeedMs > 0.5f)
+        {
+            Vector3 flatHeading = new Vector3(intendedHeading.x, 0, intendedHeading.z).normalized;
+            Vector3 desiredFlatVelocity = flatHeading * flatSpeedMs;
+
+            // Blend ONLY the X and Z axes to keep it on track
+            Vector3 newFlatVelocity = Vector3.Lerp(flatVelocity, desiredFlatVelocity, Time.fixedDeltaTime * sideFriction);
+
+            // Recombine with the untouched Y axis
+            rb.velocity = new Vector3(newFlatVelocity.x, currentY, newFlatVelocity.z);
+        }
+
+        float flatSpeedKmh = flatSpeedMs * 3.6f;
 
         if (flatSpeedKmh < 2.5f)
         {
@@ -225,9 +243,10 @@ public class ArcadeBoulder : MonoBehaviour
             stuckTimer = 0f;
         }
 
+        // Apply our custom arcade gravity
         rb.AddForce(Physics.gravity * gravityMultiplier, ForceMode.Acceleration);
 
-
+        // --- STAMINA & BRAKING ---
         if (currentStamina > 0)
         {
             currentStamina -= Time.fixedDeltaTime;
@@ -277,7 +296,6 @@ public class ArcadeBoulder : MonoBehaviour
 
     public void ApplyImpactSlowdown(float damagePercentage)
     {
-        // 1. EARLY EXIT: 0% damage skips the math, slowdown, and shake entirely
         if (damagePercentage <= 0f) return;
 
         float newSpeedKmh = currentSpeedKmh * (1f - damagePercentage);
@@ -289,24 +307,20 @@ public class ArcadeBoulder : MonoBehaviour
         currentStamina -= staminaPenalty;
         if (currentStamina < 0) currentStamina = 0;
 
-        // 2. THE 90% REDUCED SHAKE FIX
         if (_impulseSource != null)
         {
             if (damagePercentage >= 0.20f)
             {
-                // Heavy impacts: Was 1.0f to 2.5f -> Now 0.1f to 0.25f
                 float shakeForce = Mathf.Lerp(0.1f, 0.25f, damagePercentage);
                 _impulseSource.GenerateImpulse(shakeForce);
             }
             else if (damagePercentage >= 0.05f)
             {
-                // Minor impacts: Was 0.2f to 0.6f -> Now 0.02f to 0.06f
                 float shakeForce = Mathf.Lerp(0.02f, 0.06f, damagePercentage);
                 _impulseSource.GenerateImpulse(shakeForce);
             }
         }
 
-        // Trigger the Hit-Stop freeze only on big hits
         if (damagePercentage > 0.15f)
         {
             StartCoroutine(HitStopRoutine(damagePercentage));

@@ -214,24 +214,28 @@ public class GameLevelManager : MonoBehaviour
     public float GetTotalLaunchSpeed()
     {
         int strengthLvl = PlayerDataManager.Instance.data.strengthLevel;
+        int benchmark = EconomyManager.Instance.benchmarkStrength; // Reference the benchmark!
+        
+        // Let 't' go past 1.0 if the player over-levels!
+        float t = (strengthLvl - 1) / (float)(benchmark - 1);
 
-        // t is our progress from 0.0 (Level 1) to 1.0 (Level 40)
-        float t = Mathf.Clamp01((strengthLvl - 1) / 39f);
+        float evaluatedCurve = speedCurve.Evaluate(t); 
 
-        // We ask the visual graph what percentage we should be at!
-        float evaluatedCurve = speedCurve.Evaluate(t);
-
-        return Mathf.Lerp(60f, 450f, evaluatedCurve);
+        // Use LerpUnclamped so a Level 30 player actually gets > 150 km/h
+        return Mathf.LerpUnclamped(60f, 450f, evaluatedCurve); 
     }
 
     public float GetLaunchStamina()
     {
         int strengthLvl = PlayerDataManager.Instance.data.strengthLevel;
-        float t = Mathf.Clamp01((strengthLvl - 1) / 39f);
+        int benchmark = EconomyManager.Instance.benchmarkStrength;
+        
+        float t = (strengthLvl - 1) / (float)(benchmark - 1);
 
         float evaluatedCurve = staminaCurve.Evaluate(t);
 
-        return Mathf.Lerp(6f, 60f, evaluatedCurve);
+        // Use LerpUnclamped so a Level 30 player actually gets > 80 seconds
+        return Mathf.LerpUnclamped(5f, 80f, evaluatedCurve);
     }
 
     // --- END RUN LOGIC ---
