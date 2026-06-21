@@ -163,6 +163,8 @@ public class GameLevelManager : MonoBehaviour
         {
             dynamicCamera.UpdateCameraDistance(currentScale);
         }
+
+        arcadeBoulder.ApplyUpgrades(massLevel);
     }
 
     // --- UI BUTTON CLICKS ---
@@ -214,28 +216,24 @@ public class GameLevelManager : MonoBehaviour
     public float GetTotalLaunchSpeed()
     {
         int strengthLvl = PlayerDataManager.Instance.data.strengthLevel;
-        int benchmark = EconomyManager.Instance.benchmarkStrength; // Reference the benchmark!
-        
-        // Let 't' go past 1.0 if the player over-levels!
+        int benchmark = EconomyManager.Instance.benchmarkStrength;
+
         float t = (strengthLvl - 1) / (float)(benchmark - 1);
+        float evaluatedCurve = speedCurve.Evaluate(t);
 
-        float evaluatedCurve = speedCurve.Evaluate(t); 
-
-        // Use LerpUnclamped so a Level 30 player actually gets > 150 km/h
-        return Mathf.LerpUnclamped(60f, 450f, evaluatedCurve); 
+        // Locked back to the thrilling 450 km/h cap!
+        return Mathf.LerpUnclamped(60f, 350f, evaluatedCurve);
     }
 
     public float GetLaunchStamina()
     {
         int strengthLvl = PlayerDataManager.Instance.data.strengthLevel;
         int benchmark = EconomyManager.Instance.benchmarkStrength;
-        
-        float t = (strengthLvl - 1) / (float)(benchmark - 1);
 
+        float t = (strengthLvl - 1) / (float)(benchmark - 1);
         float evaluatedCurve = staminaCurve.Evaluate(t);
 
-        // Use LerpUnclamped so a Level 30 player actually gets > 80 seconds
-        return Mathf.LerpUnclamped(5f, 80f, evaluatedCurve);
+        return Mathf.LerpUnclamped(4f, 14f, evaluatedCurve);
     }
 
     // --- END RUN LOGIC ---

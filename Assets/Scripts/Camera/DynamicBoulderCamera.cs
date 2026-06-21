@@ -6,28 +6,31 @@ using Cinemachine;
 public class DynamicBoulderCamera : MonoBehaviour
 {
     private CinemachineVirtualCamera _vcam;
-    private CinemachineTransposer _transposer;
+    private Cinemachine3rdPersonFollow _thirdPerson;
     private CinemachineComposer _composer;
 
-    [Header("Camera Offsets (Size 1)")]
-    [Tooltip("Where the camera sits while waiting on the pad")]
-    public Vector3 idleFollowOffset = new Vector3(0f, 5f, -8f);
+    [Header("Camera Settings (Level 1)")]
+    public float idleCameraDistance = 4.5f;
+    public Vector3 idleShoulderOffset = new Vector3(0f, 2.5f, 0f);
 
-    [Tooltip("Where the camera locks in AFTER the launch sequence catches up")]
-    public Vector3 flyingFollowOffset = new Vector3(0f, 6f, -12f);
+    public float flyingCameraDistance = 5.5f;
+    public Vector3 flyingShoulderOffset = new Vector3(0f, 3.0f, 0f);
 
-    public float baseLookOffsetY = 1f;
-    public float distanceMultiplier = 2.0f;
+    [Tooltip("How high on the boulder the camera looks. Keeps it centered.")]
+    public float baseLookOffsetY = 0.5f;
 
-    [Header("Damping (Tight Follow)")]
+    [Tooltip("Multiplier for how far back the camera pushes at high levels")]
+    public float distanceMultiplier = 3.0f;
+
+    [Header("Soft Suspension & Follow")]
     public float flyingDampingX = 0.5f;
-    public float flyingDampingY = 0.1f;
+    public float flyingDampingY = 1.5f;
     public float flyingDampingZ = 0.5f;
 
     [Header("Launch Sequence Tuning")]
     public float lagDampingZ = 10f;
+    [Tooltip("How long the camera hangs back before snapping to follow")]
     public float initialLagDelay = 0.2f;
-    public float catchUpDuration = 1.5f;
 
     private Coroutine _launchCoroutine;
     private float _currentBoulderScale = 1.0f;
@@ -36,30 +39,22 @@ public class DynamicBoulderCamera : MonoBehaviour
     private void Awake()
     {
         _vcam = GetComponent<CinemachineVirtualCamera>();
-        _transposer = _vcam.GetCinemachineComponent<CinemachineTransposer>();
+        _thirdPerson = _vcam.GetCinemachineComponent<Cinemachine3rdPersonFollow>();
         _composer = _vcam.GetCinemachineComponent<CinemachineComposer>();
 
-        // Set to Idle state by default
         _isFlying = false;
         SetDamping(flyingDampingX, flyingDampingY, flyingDampingZ);
-        ApplyOffset(idleFollowOffset);
+        ApplyOffset(idleCameraDistance, idleShoulderOffset);
     }
 
-    /// <summary>
-    /// Handles the scaling offset so the boulder doesn't clip the lens.
-    /// </summary>
     public void UpdateCameraDistance(float currentBoulderScale)
     {
         _currentBoulderScale = currentBoulderScale;
-
-        // Reapply the correct offset based on our current state (Idle vs Flying)
-        Vector3 targetOffset = _isFlying ? flyingFollowOffset : idleFollowOffset;
-        ApplyOffset(targetOffset);
+        float targetDist = _isFlying ? flyingCameraDistance : idleCameraDistance;
+        Vector3 targetShoulder = _isFlying ? flyingShoulderOffset : idleShoulderOffset;
+        ApplyOffset(targetDist, targetShoulder);
     }
 
-    /// <summary>
-    /// Call this from GameLevelManager the moment the boulder is fired.
-    /// </summary>
     public void TriggerLaunchSequence()
     {
         if (_launchCoroutine != null) StopCoroutine(_launchCoroutine);
@@ -68,73 +63,39 @@ public class DynamicBoulderCamera : MonoBehaviour
 
     private IEnumerator LaunchSequenceRoutine()
     {
-        if (_transposer == null) yield break;
+        if (_thirdPerson == null) yield break;
 
         _isFlying = true;
 
-        // 1. THE SNAP: Instantly make the camera sluggish to create the lag effect
+        // 1. THE LAG: Make the camera sluggish while the boulder blasts off
         SetDamping(flyingDampingX, flyingDampingY, lagDampingZ);
-
-        // 2. THE LAG: Wait while the boulder shoots out
         yield return new WaitForSeconds(initialLagDelay);
 
-        // 3. THE CATCH UP: Smoothly transition Damping AND Offset to the Flying state
-        float elapsedTime = 0f;
-        float startZDamping = _transposer.m_ZDamping;
-
-        // Calculate what our actual starting offset was, taking current size into account
-        Vector3 startOffset = _transposer.m_FollowOffset;
-
-        // Calculate what our perfect flying offset should be right now
-        float extraScale = _currentBoulderScale - 1f;
-        Vector3 targetFlyingOffset = flyingFollowOffset + (flyingFollowOffset.normalized * (extraScale * distanceMultiplier));
-
-        while (elapsedTime < catchUpDuration)
-        {
-            elapsedTime += Time.deltaTime;
-            float t = elapsedTime / catchUpDuration;
-
-            // SmoothStep makes the transition ease-in and ease-out (feels cinematic)
-            float smoothT = Mathf.SmoothStep(0f, 1f, t);
-
-            // Lerp Damping
-            float currentZDamping = Mathf.Lerp(startZDamping, flyingDampingZ, smoothT);
-            SetDamping(flyingDampingX, flyingDampingY, currentZDamping);
-
-            // Lerp Offset
-            _transposer.m_FollowOffset = Vector3.Lerp(startOffset, targetFlyingOffset, smoothT);
-
-            yield return null;
-        }
-
-        // 4. LOCKED IN: Ensure we hit the exact final values
+        // 2. THE SNAP: Instantly restore standard damping and apply flying offsets
         SetDamping(flyingDampingX, flyingDampingY, flyingDampingZ);
-        ApplyOffset(flyingFollowOffset);
+        ApplyOffset(flyingCameraDistance, flyingShoulderOffset);
     }
-
-    // --- HELPER METHODS ---
 
     private void SetDamping(float x, float y, float z)
     {
-        if (_transposer == null) return;
-        _transposer.m_XDamping = x;
-        _transposer.m_YDamping = y;
-        _transposer.m_ZDamping = z;
+        if (_thirdPerson == null) return;
+        _thirdPerson.Damping = new Vector3(x, y, z);
     }
 
-    private void ApplyOffset(Vector3 baseTargetOffset)
+    private void ApplyOffset(float baseDist, Vector3 baseShoulder)
     {
-        if (_transposer == null) return;
+        if (_thirdPerson == null) return;
 
-        float extraScale = _currentBoulderScale - 1f;
-        Vector3 pushDirection = baseTargetOffset.normalized;
+        float extraScale = Mathf.Max(0, _currentBoulderScale - 1f);
+        float dynamicPush = Mathf.Sqrt(extraScale) * distanceMultiplier;
 
-        _transposer.m_FollowOffset = baseTargetOffset + (pushDirection * (extraScale * distanceMultiplier));
+        _thirdPerson.CameraDistance = baseDist + dynamicPush;
+        _thirdPerson.ShoulderOffset = baseShoulder;
 
         if (_composer != null)
         {
             Vector3 newLookOffset = _composer.m_TrackedObjectOffset;
-            newLookOffset.y = baseLookOffsetY * _currentBoulderScale;
+            newLookOffset.y = baseLookOffsetY + (extraScale * 0.4f);
             _composer.m_TrackedObjectOffset = newLookOffset;
         }
     }
