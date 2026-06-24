@@ -9,14 +9,19 @@ public class ArcadeBoulder : MonoBehaviour
     public System.Action OnRunFinished;
 
     [Header("Arcade Tuning")]
-    public float gravityMultiplier = 2.5f;
-    public float sideFriction = 5f;
-    public float steeringForce = 40f;
+    public float gravityMultiplier = 3.5f;
+    public float sideFriction = 8f;
+    public float steeringForce = 45f;
     public float steeringDelay = 0.5f;
+    [Tooltip("Keeps the vehicle glued down to the slope transitions smoothly.")]
+    public float groundStickyForce = 25f;
 
-    [Header("Slope Physics")]
-    [Tooltip("How drastically hills affect speed. Higher = faster downhills, slower uphills.")]
-    public float slopeInfluenceFactor = 40f;
+    [Header("Physics")]
+    public LayerMask groundLayer = ~0;
+
+    [Header("Slope Interaction")]
+    public float normalSmoothSpeed = 10f;
+    public float slopeInfluenceFactor = 45f;
 
     [Header("Upgrades (Applied via S-Curve)")]
     public float staminaDrainMultiplier = 1f;
@@ -37,22 +42,25 @@ public class ArcadeBoulder : MonoBehaviour
     private float stuckTimer = 0f;
 
     private Vector3 intendedHeading;
+    private Vector3 _smoothedNormal = Vector3.up;
+    private bool isGrounded = false;
 
     [Header("UI & Distance")]
     [SerializeField] private TextMeshProUGUI distanceDisplay;
 
-    [Header("Camera Tracking")]
-    public Transform cameraTarget;
-
     [Header("Visuals")]
     public Transform visualMesh;
     public float visualRollSpeedMultiplier = 50f;
+    [Tooltip("Speed at which the visual container snaps its up-axis to the ground normal.")]
+    public float visualNormalSnapSpeed = 12f;
 
     private float _startZ;
     private int _lastDisplayedDistance = -1;
     private int _nextPopDistance = 500;
 
     private CinemachineImpulseSource _impulseSource;
+
+    private float _currentSteerInput; // Caches the input for FixedUpdate
 
     public static ArcadeBoulder Instance { get; private set; }
 
@@ -64,11 +72,13 @@ public class ArcadeBoulder : MonoBehaviour
         rb = GetComponent<Rigidbody>();
         rb.useGravity = false;
         rb.drag = 0f;
-        rb.angularDrag = 0.05f;
-        rb.interpolation = RigidbodyInterpolation.Interpolate;
+        rb.angularDrag = 0f;
+        rb.interpolation = RigidbodyInterpolation.Interpolate; // CRITICAL for smooth tracking
         rb.collisionDetectionMode = CollisionDetectionMode.Continuous;
+
+        rb.freezeRotation = true; // Changed to TRUE: Keeps arcade physics completely stable
+        rb.constraints = RigidbodyConstraints.FreezeRotation;
         rb.isKinematic = true;
-        rb.maxAngularVelocity = 150f;
 
         _impulseSource = GetComponent<CinemachineImpulseSource>();
 
@@ -77,16 +87,11 @@ public class ArcadeBoulder : MonoBehaviour
 
     public void ApplyUpgrades(int massLevel)
     {
-        float t = Mathf.Clamp01((massLevel - 1) / 19f); // Level 1 to 20
+        float t = Mathf.Clamp01((massLevel - 1) / 19f);
         float sCurve = Mathf.SmoothStep(0f, 1f, t);
 
-        // 1. STAMINA DRAIN (Curves from 1.0x down to 0.5x)
         staminaDrainMultiplier = Mathf.Lerp(1f, 0.5f, sCurve);
-
-        // 2. CRUISE CONTROL PUSH (Curves from 10 force up to 25 force)
         momentumRecoveryForce = Mathf.Lerp(10f, 25f, sCurve);
-
-        Debug.Log($"Upgrades Applied! Level: {massLevel} | Stamina Drain Multiplier: {staminaDrainMultiplier:F2}x");
     }
 
     public void Launch(float launchSpeedKmh, float powerPercentage = 1f)
@@ -98,8 +103,9 @@ public class ArcadeBoulder : MonoBehaviour
 
         transform.rotation = Quaternion.identity;
         rb.angularVelocity = Vector3.zero;
+        _smoothedNormal = Vector3.up;
 
-        float baseStamina = GameLevelManager.Instance.GetLaunchStamina();
+        float baseStamina = GameLevelManager.Instance != null ? GameLevelManager.Instance.GetLaunchStamina() : 100f;
         float staminaMultiplier = Mathf.Max(powerPercentage, 0.15f);
         currentStamina = baseStamina * staminaMultiplier;
         startingStamina = currentStamina;
@@ -109,7 +115,6 @@ public class ArcadeBoulder : MonoBehaviour
 
         Vector3 launchDir = (Vector3.forward + (Vector3.up * 0.15f)).normalized;
         rb.velocity = launchDir * speedMs;
-
         intendedHeading = Vector3.forward;
 
         _startZ = transform.position.z;
@@ -129,43 +134,21 @@ public class ArcadeBoulder : MonoBehaviour
 
     private void Update()
     {
-        if (!isLaunched || distanceDisplay == null) return;
+        if (!isLaunched) return;
 
-        float currentDistance = transform.position.z - _startZ;
-        if (currentDistance < 0) currentDistance = 0;
-
-        int currentDistanceInt = Mathf.FloorToInt(currentDistance);
-
-        if (currentDistanceInt > _lastDisplayedDistance)
+        // --- DISTANCE UI CALCULATION ---
+        if (distanceDisplay != null)
         {
-            _lastDisplayedDistance = currentDistanceInt;
-            UpdateDistanceUI(currentDistanceInt);
-        }
+            float currentDistance = transform.position.z - _startZ;
+            if (currentDistance < 0) currentDistance = 0;
 
-        if (visualMesh != null && rb.velocity.sqrMagnitude > 0.1f)
-        {
-            float speed = rb.velocity.magnitude;
-            float rotationStep = (speed / visualMesh.lossyScale.x) * visualRollSpeedMultiplier * Time.deltaTime;
-            Vector3 rollAxis = Vector3.Cross(Vector3.up, rb.velocity.normalized);
-            visualMesh.Rotate(rollAxis, rotationStep, Space.World);
-        }
-    }
+            int currentDistanceInt = Mathf.FloorToInt(currentDistance);
 
-    private void LateUpdate()
-    {
-        if (!isLaunched || cameraTarget == null) return;
-
-        // Remove the manual Y-lerping. 
-        // We now let Cinemachine's Y-Damping act as our soft suspension!
-        cameraTarget.position = transform.position;
-
-        if (rb.velocity.sqrMagnitude > 1f)
-        {
-            // USE TRUE 3D VELOCITY: This allows the target to pitch UP and DOWN hills.
-            Quaternion targetRotation = Quaternion.LookRotation(rb.velocity.normalized);
-
-            // Turn the target smoothly, and let Cinemachine trail behind it organically
-            cameraTarget.rotation = Quaternion.Slerp(cameraTarget.rotation, targetRotation, Time.deltaTime * 8f);
+            if (currentDistanceInt > _lastDisplayedDistance)
+            {
+                _lastDisplayedDistance = currentDistanceInt;
+                UpdateDistanceUI(currentDistanceInt);
+            }
         }
     }
 
@@ -195,18 +178,19 @@ public class ArcadeBoulder : MonoBehaviour
     {
         if (!isLaunched || timeSinceLaunch < steeringDelay) return;
 
-        float turnAmount = input * steeringForce * Time.deltaTime;
-        Quaternion turnRotation = Quaternion.Euler(0f, turnAmount, 0f);
-
-        intendedHeading = turnRotation * intendedHeading;
-        rb.velocity = turnRotation * rb.velocity;
+        // Only store the input. NEVER apply velocity in Update!
+        _currentSteerInput = input;
     }
 
     void FixedUpdate()
     {
         if (!isLaunched) return;
 
-        if (float.IsNaN(rb.velocity.x)) rb.velocity = Vector3.zero;
+        // Catch any existing NaNs (Your original safety net)
+        if (float.IsNaN(rb.velocity.x) || float.IsNaN(rb.velocity.y) || float.IsNaN(rb.velocity.z))
+        {
+            rb.velocity = Vector3.forward * maxStartLaunchSpeedMs;
+        }
 
         timeSinceLaunch += Time.fixedDeltaTime;
         currentSpeedKmh = rb.velocity.magnitude * 3.6f;
@@ -217,104 +201,122 @@ public class ArcadeBoulder : MonoBehaviour
             return;
         }
 
-        // --- SLOPE DETECTION SYSTEM ---
+        // ----------------------------
+        // STEERING LOGIC (Moved here to prevent NaN errors!)
+        // ----------------------------
+        if (Mathf.Abs(_currentSteerInput) > 0.01f)
+        {
+            float turnAmount = _currentSteerInput * steeringForce * Time.fixedDeltaTime;
+
+            // Safety check: ensure the normal isn't completely zero
+            Vector3 safeNormal = _smoothedNormal.sqrMagnitude > 0.01f ? _smoothedNormal.normalized : Vector3.up;
+            Quaternion turnRotation = Quaternion.AngleAxis(turnAmount, safeNormal);
+
+            intendedHeading = turnRotation * intendedHeading;
+
+            // Safety check: Do not normalize a dead-stop velocity vector!
+            if (rb.velocity.sqrMagnitude > 0.001f)
+            {
+                float speed = rb.velocity.magnitude;
+                rb.velocity = turnRotation * rb.velocity.normalized * speed;
+            }
+        }
+
+        // Reset the input so it doesn't infinitely steer if you lift your finger
+        _currentSteerInput = 0f;
+
+        // ----------------------------
+        // GROUND NORMAL DETECTION
+        // ----------------------------
+        float boulderRadius = transform.localScale.y * 0.5f;
         Vector3 currentNormal = Vector3.up;
-        float rayDist = transform.localScale.y * 1.2f; // Scale safe raycast
-        if (Physics.Raycast(transform.position, Vector3.down, out RaycastHit hit, rayDist))
+
+        // Slightly long raycast to guarantee connection across steep downward drops
+        if (Physics.Raycast(transform.position, Vector3.down, out RaycastHit hit, boulderRadius + 2.5f, groundLayer))
         {
-            currentNormal = hit.normal;
+            isGrounded = true;
+            _smoothedNormal = Vector3.Slerp(_smoothedNormal, hit.normal, Time.fixedDeltaTime * normalSmoothSpeed);
+            currentNormal = _smoothedNormal;
+        }
+        else
+        {
+            isGrounded = false;
+            _smoothedNormal = Vector3.Slerp(_smoothedNormal, Vector3.up, Time.fixedDeltaTime * normalSmoothSpeed);
+            currentNormal = _smoothedNormal;
         }
 
-        // Calculates how steep the hill is. 
-        // Positive = Downhill, Negative = Uphill, 0 = Flat Ground
-        float slopeDot = Vector3.Dot(intendedHeading.normalized, currentNormal);
+        // ----------------------------
+        // GRAVITY & DRIVING LOGIC
+        // ----------------------------
+        Vector3 gravityForce = Physics.gravity * gravityMultiplier;
+        rb.AddForce(gravityForce, ForceMode.Acceleration);
 
-        // This calculates the perfect forward direction angled ALONG the slope
-        Vector3 slopeForward = Vector3.ProjectOnPlane(intendedHeading, currentNormal).normalized;
-
-        float currentY = rb.velocity.y;
-        Vector3 flatVelocity = new Vector3(rb.velocity.x, 0, rb.velocity.z);
-        float flatSpeedMs = flatVelocity.magnitude;
-        float flatSpeedKmh = flatSpeedMs * 3.6f;
-
-        // HORIZONTAL-ONLY ARCADE GRIP
-        if (flatSpeedMs > 0.5f)
+        // Sticky Downward force ensures the rigid body behaves smoothly over sudden hill apexes
+        if (isGrounded)
         {
-            Vector3 flatHeading = new Vector3(intendedHeading.x, 0, intendedHeading.z).normalized;
-            Vector3 desiredFlatVelocity = flatHeading * flatSpeedMs;
-
-            Vector3 newFlatVelocity = Vector3.Lerp(flatVelocity, desiredFlatVelocity, Time.fixedDeltaTime * sideFriction);
-            rb.velocity = new Vector3(newFlatVelocity.x, currentY, newFlatVelocity.z);
+            rb.AddForce(-currentNormal * groundStickyForce, ForceMode.Acceleration);
         }
 
-        // Base Gravity
-        rb.AddForce(Physics.gravity * gravityMultiplier, ForceMode.Acceleration);
+        Vector3 heading = intendedHeading;
+        if (heading.sqrMagnitude < 0.001f) heading = Vector3.forward;
+        heading.Normalize();
 
-        // --- APPLY NATURAL SLOPE FORCES ---
+        // Calculate direct left/right alignment based on the slope surface
+        Vector3 rightDir = Vector3.Cross(currentNormal, heading).normalized;
+        float lateralSpeed = Vector3.Dot(rb.velocity, rightDir);
+        rb.AddForce(-rightDir * (lateralSpeed * sideFriction), ForceMode.Acceleration);
+
+        // Project forward direction entirely parallel onto the slope layout
+        Vector3 slopeForward = Vector3.ProjectOnPlane(heading, currentNormal).normalized;
+        float slopeDot = Vector3.Dot(slopeForward, Vector3.up);
+
         if (Mathf.Abs(slopeDot) > 0.05f)
         {
-            // If downhill, slopeDot is positive -> pushes the boulder forward and down.
-            // If uphill, slopeDot is negative -> pushes the boulder backward, naturally slowing it.
-            rb.AddForce(slopeForward * (slopeInfluenceFactor * slopeDot), ForceMode.Acceleration);
+            // Downhill gravity assist or uphill dynamic reduction
+            rb.AddForce(slopeForward * (-slopeInfluenceFactor * slopeDot), ForceMode.Acceleration);
         }
 
+        // --- STAMINA & ARCADE MOTOR LOGIC ---
         float dynamicBrakeThreshold = Mathf.Max(startingStamina * brakingZonePercentage, 0.01f);
 
-        // --- STAMINA DRAIN ---
-        if (currentStamina > 0)
+        if (currentStamina > 0f)
         {
             currentStamina -= Time.fixedDeltaTime * staminaDrainMultiplier;
-            if (currentStamina < 0) currentStamina = 0;
+            currentStamina = Mathf.Max(0f, currentStamina);
         }
 
-        // --- SMART CRUISE CONTROL ---
-        // If we hit a steep uphill (slopeDot < -0.1f), the cruise control shuts off 
-        // to allow gravity to naturally win and slow the boulder down.
-        bool isSteepUphill = slopeDot < -0.1f;
+        bool isSteepUphill = slopeDot > 0.1f;
 
         if (currentStamina > dynamicBrakeThreshold && !isSteepUphill)
         {
-            if (flatSpeedMs < maxStartLaunchSpeedMs)
+            if (rb.velocity.magnitude < maxStartLaunchSpeedMs)
             {
-                // Pushes ALONG the slope, avoiding terrain friction
                 rb.AddForce(slopeForward * momentumRecoveryForce, ForceMode.Acceleration);
             }
         }
 
-        // --- SMOOTH BRAKING (Final 25% Zone) ---
         if (currentStamina <= dynamicBrakeThreshold && currentStamina > 0f)
         {
             float rawIntensity = 1f - (currentStamina / dynamicBrakeThreshold);
-            float smoothIntensity = Mathf.SmoothStep(0f, 1f, rawIntensity);
+            float brakeForce = maxBrakeForce * Mathf.SmoothStep(0f, 1f, rawIntensity);
 
-            float currentBrakeForce = maxBrakeForce * smoothIntensity;
-
-            if (rb.velocity.sqrMagnitude > 0.01f && !float.IsNaN(currentBrakeForce))
-            {
-                // Braking always pushes against true velocity to stop safely
-                rb.AddForce(-rb.velocity.normalized * currentBrakeForce, ForceMode.Acceleration);
-            }
-        }
-
-        // --- FINAL STOP ---
-        if (currentStamina == 0f)
-        {
             if (rb.velocity.sqrMagnitude > 0.01f)
             {
-                rb.AddForce(-rb.velocity.normalized * maxBrakeForce, ForceMode.Acceleration);
+                rb.AddForce(-rb.velocity.normalized * brakeForce, ForceMode.Acceleration);
             }
         }
 
-        // --- THE HILL STRUGGLE (Adjusted Anti-Crawl) ---
-        // Lowered to 4 km/h so the boulder can dramatically struggle up a hill without dying instantly.
-        if (flatSpeedKmh < 4f && timeSinceLaunch > 1.5f)
+        if (currentStamina <= 0f && rb.velocity.sqrMagnitude > 0.01f)
+        {
+            rb.AddForce(-rb.velocity.normalized * maxBrakeForce, ForceMode.Acceleration);
+        }
+
+        // Stuck Detection
+        Vector3 flatVelocity = new Vector3(rb.velocity.x, 0f, rb.velocity.z);
+        if (flatVelocity.magnitude * 3.6f < 4f && timeSinceLaunch > 1.5f)
         {
             stuckTimer += Time.fixedDeltaTime;
-            if (stuckTimer >= 0.5f)
-            {
-                ApplyBraking();
-                return;
-            }
+            if (stuckTimer >= 0.5f) ApplyBraking();
         }
         else
         {
@@ -380,8 +382,6 @@ public class ArcadeBoulder : MonoBehaviour
     public void ApplyBonk()
     {
         rb.velocity = Vector3.zero;
-        rb.angularVelocity = Vector3.zero;
-
         rb.AddForce(-Vector3.forward * 10f, ForceMode.Impulse);
 
         isLaunched = false;

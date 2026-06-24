@@ -1,7 +1,7 @@
 using Cinemachine;
 using DG.Tweening;
 using System.Collections;
-using System.Collections.Generic; // <-- REQUIRED FOR RAYCAST LISTS
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.InputSystem.EnhancedTouch;
@@ -43,6 +43,10 @@ public class LaunchSequenceManager : MonoBehaviour
     private float targetDragPower = 0f;
     private float velocity = 0f;
 
+    [Header("Close Up Cameras")]
+    public CinemachineVirtualCamera vcamBoulderCloseUp;
+    public CinemachineVirtualCamera vcamHandCloseUp;
+
     private void Start()
     {
         InitializeNewRun();
@@ -68,22 +72,12 @@ public class LaunchSequenceManager : MonoBehaviour
         StartCoroutine(PreLaunchSequence());
     }
 
-    // --- THE BULLETPROOF UI RAYCASTER ---
     private bool IsTouchOverUI(Vector2 screenPosition)
     {
         if (EventSystem.current == null) return false;
-
-        // Create a fake pointer at the exact pixel the player touched
-        PointerEventData eventData = new PointerEventData(EventSystem.current)
-        {
-            position = screenPosition
-        };
-
-        // Shoot a raycast through the UI canvas
+        PointerEventData eventData = new PointerEventData(EventSystem.current) { position = screenPosition };
         List<RaycastResult> results = new List<RaycastResult>();
         EventSystem.current.RaycastAll(eventData, results);
-
-        // If it hit ANYTHING in the UI, return true!
         return results.Count > 0;
     }
 
@@ -93,7 +87,7 @@ public class LaunchSequenceManager : MonoBehaviour
         if (timingMinigamePanel) timingMinigamePanel.SetActive(false);
         AlignCharacterToBoulder();
 
-        // WAIT FOR START TAP
+        // --- PHASE 1: WAIT FOR THE FIRST START TAP ---
         bool waitingForStart = true;
         while (waitingForStart)
         {
@@ -102,17 +96,17 @@ public class LaunchSequenceManager : MonoBehaviour
                 var touch = Touch.activeTouches[0];
                 if (touch.phase == UnityEngine.InputSystem.TouchPhase.Began)
                 {
-                    // Pass the EXACT PIXEL coordinate to our new Raycaster
                     if (!IsTouchOverUI(touch.screenPosition))
                     {
-                        waitingForStart = false;
+                        waitingForStart = false; // Player clicked to start!
                     }
                 }
             }
             yield return null;
         }
 
-        // --- PICKUP PHASE ---
+        // --- PHASE 2: TIMING CHANGED HERE ---
+        // The weapon now remains completely stationary at its spawn point until this line fires
         yield return StartCoroutine(FlyWeaponToHand());
 
         var animator = skinManager.currentActiveAnimator;
@@ -120,7 +114,7 @@ public class LaunchSequenceManager : MonoBehaviour
 
         yield return new WaitForSeconds(0.5f);
 
-        // --- DRAG PHASE ---
+        // --- PHASE 3: DRAG MINIGAME INITIALIZATION ---
         CutToCamera(vcamMinigame);
 
         if (timingMinigamePanel) timingMinigamePanel.SetActive(true);
@@ -144,10 +138,8 @@ public class LaunchSequenceManager : MonoBehaviour
 
         bool isDragging = false;
         Vector2 startTouchPos = Vector2.zero;
-
         float dpiScale = Screen.dpi > 0 ? Screen.dpi / 160f : Screen.height / 1080f;
         float actualMaxDrag = maxDragPixels * dpiScale;
-
         float safeInputTime = Time.time + inputDeadZoneDelay;
         UnityEngine.InputSystem.EnhancedTouch.Finger activeFinger = null;
 
@@ -163,7 +155,6 @@ public class LaunchSequenceManager : MonoBehaviour
                     {
                         if (touch.phase == UnityEngine.InputSystem.TouchPhase.Began)
                         {
-                            // Block drags that start on UI panels
                             if (IsTouchOverUI(touch.screenPosition)) continue;
 
                             isDragging = true;
@@ -179,13 +170,11 @@ public class LaunchSequenceManager : MonoBehaviour
                 else if (isDragging && activeFinger != null)
                 {
                     bool fingerStillOnScreen = false;
-
                     foreach (var touch in touches)
                     {
                         if (touch.finger == activeFinger)
                         {
                             fingerStillOnScreen = true;
-
                             if (touch.phase == UnityEngine.InputSystem.TouchPhase.Moved ||
                                 touch.phase == UnityEngine.InputSystem.TouchPhase.Stationary)
                             {
@@ -200,13 +189,11 @@ public class LaunchSequenceManager : MonoBehaviour
                             break;
                         }
                     }
-
                     if (!fingerStillOnScreen || !isDragging) break;
                 }
             }
 
             smoothedDragPower = Mathf.SmoothDamp(smoothedDragPower, targetDragPower, ref velocity, 0.08f);
-
             if (animator != null) animator.SetFloat("WindupPower", smoothedDragPower);
             if (timingSlider) timingSlider.value = smoothedDragPower;
 
@@ -228,11 +215,9 @@ public class LaunchSequenceManager : MonoBehaviour
                     skinManager.giantWeaponInScene.localRotation = Quaternion.identity;
                 }
             }
-
             yield return null;
         }
 
-        // --- CLEANUP & RELEASE ---
         if (timingMinigamePanel) timingMinigamePanel.SetActive(false);
         if (powerPercentageText != null) powerPercentageText.gameObject.SetActive(false);
 
@@ -247,7 +232,6 @@ public class LaunchSequenceManager : MonoBehaviour
         }
 
         yield return new WaitForSeconds(impactDelayAfterRelease);
-
         CutToCamera(vcamFollow);
 
         float clampedPower = Mathf.Clamp01(smoothedDragPower);
@@ -257,25 +241,20 @@ public class LaunchSequenceManager : MonoBehaviour
 
         FindObjectOfType<DynamicBoulderCamera>()?.TriggerLaunchSequence();
         boulder.Launch(finalSpeed);
-
         GameLevelManager.Instance.SetStateToLaunched();
     }
 
     private IEnumerator FlyWeaponToHand()
     {
         if (skinManager == null) yield break;
-
         Transform weapon = skinManager.giantWeaponInScene;
         Transform socket = skinManager.currentWeaponSocket;
-
         if (weapon == null || socket == null) yield break;
 
         weapon.DOKill();
         weapon.SetParent(null);
-
         weapon.DOMove(socket.position, 0.5f).SetEase(Ease.InOutSine);
         weapon.DORotateQuaternion(socket.rotation, 0.5f).SetEase(Ease.InOutSine);
-
         yield return new WaitForSeconds(0.5f);
 
         weapon.SetParent(socket);
@@ -283,11 +262,31 @@ public class LaunchSequenceManager : MonoBehaviour
         weapon.localRotation = Quaternion.identity;
     }
 
+    public IEnumerator PanToTarget(CinemachineVirtualCamera activeCam, Transform targetTransform, float duration)
+    {
+        if (activeCam != null && targetTransform != null)
+        {
+            activeCam.LookAt = targetTransform;
+            activeCam.Follow = targetTransform;
+
+            CutToCamera(activeCam);
+            yield return new WaitForSeconds(duration);
+        }
+    }
+
+    public void ResetToIdleCamera()
+    {
+        CutToCamera(vcamIdle);
+    }
+
     private void CutToCamera(CinemachineVirtualCamera targetCam)
     {
         if (vcamIdle) vcamIdle.Priority = 10;
         if (vcamMinigame) vcamMinigame.Priority = 10;
         if (vcamFollow) vcamFollow.Priority = 10;
+        if (vcamBoulderCloseUp) vcamBoulderCloseUp.Priority = 10;
+        if (vcamHandCloseUp) vcamHandCloseUp.Priority = 10;
+
         if (targetCam) targetCam.Priority = 20;
     }
 
@@ -303,10 +302,7 @@ public class LaunchSequenceManager : MonoBehaviour
 
     private void OnDestroy()
     {
-        if (skinManager != null && skinManager.giantWeaponInScene != null)
-        {
-            skinManager.giantWeaponInScene.DOKill();
-        }
+        if (skinManager != null && skinManager.giantWeaponInScene != null) skinManager.giantWeaponInScene.DOKill();
         if (upgradePanel != null) upgradePanel.transform.DOKill();
     }
 }

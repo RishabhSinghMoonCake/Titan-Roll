@@ -1,10 +1,8 @@
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
-using System.Runtime.InteropServices.WindowsRuntime;
 using TMPro;
 using UnityEngine;
 using UnityEngine.SceneManagement;
-
 
 public class GameLevelManager : MonoBehaviour
 {
@@ -18,41 +16,51 @@ public class GameLevelManager : MonoBehaviour
     public TextMeshProUGUI goldText;
 
     [Header("Sub-Managers")]
-    [Tooltip("Reference to the new manager handling the character skins")]
     public CharacterSkinManager characterSkinManager;
 
     [Header("Boulder Visuals & Setup")]
-    public Transform visualHolder;       // Empty child object inside ArcadeBoulder
-    public Transform launchPadAnchor;    // Where the boulder rests
-    public GameObject[] skinPrefabs;     // Array of your ball skins
+    public Transform visualHolder;
+    public Transform launchPadAnchor;
+    public GameObject[] skinPrefabs;
+
+    [Header("Boulder Particle References")]
+    [Tooltip("Assign the Particle System component that lives directly on each corresponding boulder prefab")]
+    public ParticleSystem[] boulderParticles;
 
     [Header("Boulder Math Settings")]
-    public float scalePerLevel = 0.05f;  // 5% size increase per level
-    public float massAtLevel40 = 1000f;     // Added physical weight per level
+    public float scalePerLevel = 0.05f;
+    public float massAtLevel40 = 1000f;
     public float baseColliderRadius = 0.5f;
     public float baseLaunchSpeed = 140f;
-    public float baseMass = 50f; // Base mass for level 1 (can be used in calculations or just as a reference)
+    public float baseMass = 50f;
     public float speedPerStrengthLevel = 14f;
+
     [Header("Progression Curves")]
-    [Tooltip("Draw how fast the boulder gets from Lv 1 to Lv 40")]
     public AnimationCurve speedCurve;
-    [Tooltip("Draw how much stamina you get from Lv 1 to Lv 40")]
     public AnimationCurve staminaCurve;
 
     [Header("Camera")]
     public DynamicBoulderCamera dynamicCamera;
 
     [Header("UI System")]
-    public UpgradeCardUI[] upgradeCards; // Drag all 3 cards here
+    public UpgradeCardUI[] upgradeCards;
 
     [Header("Optimization & Debug")]
     public TMPro.TextMeshProUGUI fpsText;
     private float _deltaTime = 0.0f;
 
-
     private GameObject _currentSkinInstance;
     private int _currentSkinIndex = -1;
 
+    [Header("Upgrade Cutscene Settings")]
+    public LaunchSequenceManager launchSequenceManager;
+    public float cameraPanDuration = 1.5f;
+    public float dramaticPauseDuration = 1.2f;
+
+    private bool _isUpgradingCutscene = false;
+
+    [Header("Dynamic Camera Framers")]
+    public CinemachineDynamicScaler boulderZoomFramer; // <-- Changed type
     private void Awake()
     {
         if (Instance == null) Instance = this;
@@ -61,16 +69,18 @@ public class GameLevelManager : MonoBehaviour
 
     private void Start()
     {
-
         Application.targetFrameRate = 60;
         QualitySettings.vSyncCount = 0;
         currentState = GameState.Idle;
 
-        // Note: We REMOVED the OnLaunchTap subscription from here. 
-        // LaunchSequenceManager handles the initial taps and minigame now.
-
         if (arcadeBoulder != null)
             arcadeBoulder.OnRunFinished += StartEndRunSequence;
+
+        // NEW: Initialize the static boulder target
+        if (boulderZoomFramer != null && arcadeBoulder != null)
+        {
+            boulderZoomFramer.SetTarget(arcadeBoulder.transform);
+        }
 
         UpdateBoulderVisualsAndStats();
         UpdateUI();
@@ -78,26 +88,18 @@ public class GameLevelManager : MonoBehaviour
 
     private void Update()
     {
-        // Only allow steering if the LaunchSequenceManager told us the slap finished
         if (currentState == GameState.Launched)
         {
             arcadeBoulder.Steer(InputManager.Instance.SteeringInput);
         }
 
-
-        // --- SMOOTHED FPS METER ---
         if (fpsText != null)
         {
-            // Smooth out the time between frames
             _deltaTime += (Time.unscaledDeltaTime - _deltaTime) * 0.1f;
-
-            // Only rebuild the UI text every 15 frames to save performance!
             if (Time.frameCount % 15 == 0)
             {
                 float fps = 1.0f / _deltaTime;
                 fpsText.text = $"FPS: {Mathf.Ceil(fps)}";
-
-                // Optional: Change color if dropping frames
                 if (fps >= 50f) fpsText.color = Color.green;
                 else if (fps >= 30f) fpsText.color = Color.yellow;
                 else fpsText.color = Color.red;
@@ -105,29 +107,134 @@ public class GameLevelManager : MonoBehaviour
         }
     }
 
-    // --- CALLED BY LAUNCH SEQUENCE MANAGER ---
-    public void SetStateToLaunched()
+    public void SetStateToLaunched() => currentState = GameState.Launched;
+
+    public void BuyMassUpgrade()
     {
-        currentState = GameState.Launched;
+        if (_isUpgradingCutscene) return;
+
+        if (PlayerDataManager.Instance.TryBuyUpgrade("Mass"))
+        {
+            int massLevel = PlayerDataManager.Instance.data.massLevel;
+
+            // Trigger on levels 6, 11, 16, etc. (Modulo 5 + 1)
+            if (massLevel > 1 && massLevel % 5 == 1)
+            {
+                StartCoroutine(MassMilestoneCutsceneRoutine());
+            }
+            else
+            {
+                UpdateBoulderVisualsAndStats();
+                UpdateUI();
+            }
+        }
     }
 
-    // --- UNIFIED BOULDER UPDATE ---
+    public void BuyStrengthUpgrade()
+    {
+        if (_isUpgradingCutscene) return;
 
-    private void UpdateBoulderVisualsAndStats()
+        if (PlayerDataManager.Instance.TryBuyUpgrade("Strength"))
+        {
+            int strengthLevel = PlayerDataManager.Instance.data.strengthLevel;
+
+            // Trigger on levels 6, 11, 16, etc. (Modulo 5 + 1)
+            if (strengthLevel > 1 && strengthLevel % 5 == 1)
+            {
+                StartCoroutine(StrengthMilestoneCutsceneRoutine());
+            }
+            else
+            {
+                UpdateBoulderVisualsAndStats();
+                UpdateUI();
+            }
+        }
+    }
+
+    // --- NEW: Handles ONLY the Boulder / Mass ---
+    private IEnumerator MassMilestoneCutsceneRoutine()
+    {
+        _isUpgradingCutscene = true;
+
+        UpdateBoulderStatsWithoutRecreatingCharacter();
+
+        // 1. Pan camera ONLY to the boulder
+        if (launchSequenceManager != null && arcadeBoulder != null)
+        {
+            yield return StartCoroutine(launchSequenceManager.PanToTarget(launchSequenceManager.vcamBoulderCloseUp, arcadeBoulder.transform, cameraPanDuration));
+        }
+
+        // 2. Swap out the boulder skin 
+        SwapBoulderSkinOnly();
+
+        // 3. Fire off the boulder upgrade particle effect
+        int massLevel = PlayerDataManager.Instance.data.massLevel;
+        int requiredIndex = (massLevel - 1) / 5;
+        int boulderIdx = Mathf.Clamp(requiredIndex, 0, boulderParticles.Length - 1);
+
+        if (boulderParticles != null && boulderParticles.Length > boulderIdx && boulderParticles[boulderIdx] != null)
+        {
+            boulderParticles[boulderIdx].Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            boulderParticles[boulderIdx].Play(true);
+        }
+        yield return new WaitForSeconds(dramaticPauseDuration);
+
+        // 4. Reset camera
+        if (launchSequenceManager != null) launchSequenceManager.ResetToIdleCamera();
+
+        UpdateUI();
+        _isUpgradingCutscene = false;
+    }
+
+    private IEnumerator StrengthMilestoneCutsceneRoutine()
+    {
+        _isUpgradingCutscene = true;
+
+        // 1. Pan camera to the stable ANCHOR on the ground instead of the temporary weapon
+        if (launchSequenceManager != null && characterSkinManager != null)
+        {
+            Transform camTarget = characterSkinManager.weaponRestAnchor != null
+                ? characterSkinManager.weaponRestAnchor
+                : characterSkinManager.giantWeaponInScene;
+
+            yield return StartCoroutine(launchSequenceManager.PanToTarget(
+                launchSequenceManager.vcamHandCloseUp,
+                camTarget,
+                cameraPanDuration));
+        }
+
+        // 2. Perform the actual asset prefab swap
+        int strengthLevel = PlayerDataManager.Instance.data.strengthLevel;
+        int requiredIndex = (strengthLevel - 1) / 5;
+        if (characterSkinManager != null)
+        {
+            characterSkinManager.EquipWeaponSkin(requiredIndex);
+        }
+
+        // 3. Play the weapon upgrade particle effect dynamically
+        if (characterSkinManager != null) characterSkinManager.PlayActiveWeaponParticle();
+
+        yield return new WaitForSeconds(dramaticPauseDuration);
+
+        // 4. Reset camera
+        if (launchSequenceManager != null) launchSequenceManager.ResetToIdleCamera();
+
+        UpdateUI();
+        _isUpgradingCutscene = false;
+    }
+
+    private void UpdateBoulderStatsWithoutRecreatingCharacter()
     {
         int massLevel = PlayerDataManager.Instance.data.massLevel;
 
-        // 1. Calculate Size
         float currentScale = 1.0f + ((massLevel - 1) * scalePerLevel);
         arcadeBoulder.transform.localScale = Vector3.one * currentScale;
 
-        // 2. Update Physical Mass
         Rigidbody rb = arcadeBoulder.GetComponent<Rigidbody>();
-        float newMass = Mathf.Lerp(baseMass,massAtLevel40, (massLevel - 1) / 39f);
+        float newMass = Mathf.Lerp(baseMass, massAtLevel40, (massLevel - 1) / 39f);
         if (rb != null) rb.mass = newMass;
         if (InputManager.Instance != null) InputManager.Instance.currentBoulderMass = newMass;
 
-        // 3. Anchor Position
         if (launchPadAnchor != null)
         {
             float currentRadius = baseColliderRadius * currentScale;
@@ -135,52 +242,41 @@ public class GameLevelManager : MonoBehaviour
             arcadeBoulder.transform.position = new Vector3(anchorPos.x, anchorPos.y + currentRadius, anchorPos.z);
         }
 
-        // 4. Skin Changing Logic
-        int requiredSkinIndex = (massLevel - 1) / 5;
-        requiredSkinIndex = Mathf.Clamp(requiredSkinIndex, 0, skinPrefabs.Length - 1);
+        if (dynamicCamera != null) dynamicCamera.UpdateCameraDistance(currentScale);
+        arcadeBoulder.ApplyUpgrades(massLevel);
+    }
 
-        if (_currentSkinIndex != requiredSkinIndex || _currentSkinInstance == null)
+    private void SwapBoulderSkinOnly()
+    {
+        int massLevel = PlayerDataManager.Instance.data.massLevel;
+        int requiredIndex = (massLevel - 1) / 5;
+        int boulderIndex = Mathf.Clamp(requiredIndex, 0, skinPrefabs.Length - 1);
+
+        if (_currentSkinIndex != boulderIndex || _currentSkinInstance == null)
         {
             if (_currentSkinInstance != null) Destroy(_currentSkinInstance);
 
-            _currentSkinInstance = Instantiate(skinPrefabs[requiredSkinIndex] ? skinPrefabs[requiredSkinIndex] : skinPrefabs[0], visualHolder);
+            _currentSkinInstance = Instantiate(skinPrefabs[boulderIndex] ? skinPrefabs[boulderIndex] : skinPrefabs[0], visualHolder);
             _currentSkinInstance.transform.localPosition = Vector3.zero;
             _currentSkinInstance.transform.localRotation = Quaternion.identity;
             _currentSkinInstance.transform.localScale = Vector3.one;
 
-            _currentSkinIndex = requiredSkinIndex;
+            _currentSkinIndex = boulderIndex;
         }
+    }
 
-        // 5. Update Character Skin & Hand Socket
+    private void UpdateBoulderVisualsAndStats()
+    {
+        UpdateBoulderStatsWithoutRecreatingCharacter();
+        if (characterSkinManager != null) characterSkinManager.EquipCharacterSkin(0);
+        SwapBoulderSkinOnly();
+
         if (characterSkinManager != null)
         {
-            // Equip skin 0 (Can be tied to PlayerData later!)
-            characterSkinManager.EquipCharacterSkin(0);
+            // FIX: Tie the weapon skin strictly to the Strength Level!
+            int requiredIndex = (PlayerDataManager.Instance.data.strengthLevel - 1) / 5;
+            characterSkinManager.EquipWeaponSkin(requiredIndex);
         }
-
-        // 6. Update Camera Distance
-        if (dynamicCamera != null)
-        {
-            dynamicCamera.UpdateCameraDistance(currentScale);
-        }
-
-        arcadeBoulder.ApplyUpgrades(massLevel);
-    }
-
-    // --- UI BUTTON CLICKS ---
-
-    public void BuyMassUpgrade()
-    {
-        if (PlayerDataManager.Instance.TryBuyUpgrade("Mass"))
-        {
-            UpdateBoulderVisualsAndStats(); // Instantly apply size/mass/skin
-            UpdateUI();
-        }
-    }
-
-    public void BuyStrengthUpgrade()
-    {
-        if (PlayerDataManager.Instance.TryBuyUpgrade("Strength")) UpdateUI();
     }
 
     public void BuyGreedUpgrade()
@@ -190,11 +286,9 @@ public class GameLevelManager : MonoBehaviour
 
     public void UpdateUI()
     {
-        // 1. Update the main gold text
         if (goldText != null)
             goldText.text = FormatMoney(PlayerDataManager.Instance.data.gold);
 
-        // 2. Tell every upgrade card to re-calculate its logic
         foreach (UpgradeCardUI card in upgradeCards)
         {
             if (card != null) card.RefreshCardUI();
@@ -209,55 +303,35 @@ public class GameLevelManager : MonoBehaviour
         return amount.ToString("N0");
     }
 
-    // --- LAUNCH CALCULATION ---
-
-    // --- NEW STAMINA & SPEED MATH ---
-
     public float GetTotalLaunchSpeed()
     {
         int strengthLvl = PlayerDataManager.Instance.data.strengthLevel;
         int benchmark = EconomyManager.Instance.benchmarkStrength;
-
         float t = (strengthLvl - 1) / (float)(benchmark - 1);
-        float evaluatedCurve = speedCurve.Evaluate(t);
-
-        // Locked back to the thrilling 450 km/h cap!
-        return Mathf.LerpUnclamped(60f, 350f, evaluatedCurve);
+        return Mathf.LerpUnclamped(60f, 350f, speedCurve.Evaluate(t));
     }
 
     public float GetLaunchStamina()
     {
         int strengthLvl = PlayerDataManager.Instance.data.strengthLevel;
         int benchmark = EconomyManager.Instance.benchmarkStrength;
-
         float t = (strengthLvl - 1) / (float)(benchmark - 1);
-        float evaluatedCurve = staminaCurve.Evaluate(t);
-
-        return Mathf.LerpUnclamped(4f, 14f, evaluatedCurve);
+        return Mathf.LerpUnclamped(4f, 16f, staminaCurve.Evaluate(t));
     }
-
-    // --- END RUN LOGIC ---
 
     private void StartEndRunSequence() => StartCoroutine(EndRunRoutine());
 
     private IEnumerator EndRunRoutine()
     {
         currentState = GameState.Idle;
-
         float finalDist = arcadeBoulder.transform.position.z;
-
-        // The RewardManager now handles the Distance Tiers AND the Smash Gold!
-        int goldEarned = RewardManager.Instance.FinalizeRunRewards(finalDist);
-
-        // Optional: Update your UI here to show "Total Earned: [goldEarned]" before restarting
+        RewardManager.Instance.FinalizeRunRewards(finalDist);
         yield return new WaitForSeconds(2.5f);
-
         SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
     }
 
     private void OnDestroy()
     {
-        // Removed InputManager un-subscribing since it's gone from this script
         if (arcadeBoulder != null) arcadeBoulder.OnRunFinished -= StartEndRunSequence;
     }
 }
