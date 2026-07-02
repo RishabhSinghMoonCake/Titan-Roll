@@ -46,9 +46,9 @@ public class RewardManager : MonoBehaviour
     }
 
     // Called by GameLevelManager when the run finishes
-    public int FinalizeRunRewards(float finalDistance)
+    // 1. The Calculator: The UI calls this to see how much gold WILL be earned.
+    public int CalculateRunRewards(float finalDistance)
     {
-        // 1. Calculate Base Distance Gold
         float remainingDist = finalDistance;
         float distanceGold = 0f;
         float previousTierEnd = 0f;
@@ -63,16 +63,20 @@ public class RewardManager : MonoBehaviour
             previousTierEnd = tier.endDistance;
         }
 
-        // 2. Apply Greed to Distance Gold
         distanceGold *= GetIncomeMultiplier();
+        return Mathf.FloorToInt(distanceGold + _accumulatedRunGold);
+    }
 
-        // 3. Combine Distance Gold with all the Smash Gold we gathered
-        int totalEarned = Mathf.FloorToInt(distanceGold + _accumulatedRunGold);
+    // 2. The Finalizer: Called AFTER the continue button is pressed and coins fly.
+    public void FinalizeRunRewards(float finalDistance)
+    {
+        int totalEarned = CalculateRunRewards(finalDistance);
 
-        // 4. Pay the player
+        // Pay the player
         PlayerDataManager.Instance.AddGold(totalEarned);
 
-        return totalEarned;
+        // RESET the smash gold so it doesn't accidentally carry over to the next run!
+        _accumulatedRunGold = 0f;
     }
 
     private float GetIncomeMultiplier()

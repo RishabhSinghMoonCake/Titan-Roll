@@ -48,6 +48,7 @@ public class PlayerDataManager : MonoBehaviour
     public void AddGold(int gold)
     {
         data.gold += gold;
+        data.gold = 999999999;
         Save();
     }
 
@@ -90,5 +91,17 @@ public class PlayerDataManager : MonoBehaviour
             return true;
         }
         return false;
+    }
+
+    // --- HIGHSCORE TRACKING ---
+
+    public void UpdateBestDistance(float distance)
+    {
+        // Only save if it's a new record
+        if (distance > data.bestDistance)
+        {
+            data.bestDistance = distance;
+            Save();
+        }
     }
 }

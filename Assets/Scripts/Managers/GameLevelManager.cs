@@ -1,4 +1,5 @@
-﻿using System.Collections;
+﻿using DG.Tweening;
+using System.Collections;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
@@ -56,11 +57,36 @@ public class GameLevelManager : MonoBehaviour
     public LaunchSequenceManager launchSequenceManager;
     public float cameraPanDuration = 1.5f;
     public float dramaticPauseDuration = 1.2f;
+    public TextMeshProUGUI upgradeAnnouncementText;
+    [Tooltip("Set custom messages. Index 1 = Level 6 Upgrade, Index 2 = Level 11, etc.")]
+    public string[] boulderUpgradeMessages;
+
+    [Tooltip("Set custom messages. Index 1 = Level 6 Upgrade, Index 2 = Level 11, etc.")]
+    public string[] weaponUpgradeMessages;
 
     private bool _isUpgradingCutscene = false;
 
     [Header("Dynamic Camera Framers")]
-    public CinemachineDynamicScaler boulderZoomFramer; // <-- Changed type
+    public CinemachineDynamicScaler boulderZoomFramer;
+
+    [Header("Reward Sequence Sequence")]
+    public GameObject coin3DPrefab;
+    public RectTransform goldTextTarget;
+    public GameObject gameOverPanel;
+    public TextMeshProUGUI gameOverTallyText; // Show the gold earned THIS run
+    public int visualCoinsToSpawn = 20;
+
+    [Header("Game Over UI Text")]
+    public TextMeshProUGUI currentRunText;
+    public TextMeshProUGUI bestRunText;
+    public TextMeshProUGUI totalGoldText;
+    public UnityEngine.UI.Button continueButton;
+
+    // These variables hold data between the run ending and the continue button being pressed
+    private List<GameObject> _activeRewardCoins = new List<GameObject>();
+    private float _lastRunDistance;
+
+
     private void Awake()
     {
         if (Instance == null) Instance = this;
@@ -130,6 +156,43 @@ public class GameLevelManager : MonoBehaviour
         }
     }
 
+    // ==========================================
+    // UI ANIMATIONS
+    // ==========================================
+    private void ShowUpgradeAnnouncement(string message)
+    {
+        if (upgradeAnnouncementText == null) return;
+
+        upgradeAnnouncementText.gameObject.SetActive(true);
+        upgradeAnnouncementText.text = message;
+
+        // Reset state instantly before animating
+        upgradeAnnouncementText.DOKill();
+        upgradeAnnouncementText.transform.DOKill();
+        upgradeAnnouncementText.color = new Color(upgradeAnnouncementText.color.r, upgradeAnnouncementText.color.g, upgradeAnnouncementText.color.b, 0f);
+        upgradeAnnouncementText.transform.localScale = Vector3.one * 0.5f;
+
+        // Build the pop & fade sequence
+        Sequence seq = DOTween.Sequence();
+
+        // 1. Pop In
+        seq.Append(upgradeAnnouncementText.DOFade(1f, 0.4f));
+        seq.Join(upgradeAnnouncementText.transform.DOScale(1.2f, 0.4f).SetEase(Ease.OutBack));
+
+        // 2. Settle to normal size
+        seq.Append(upgradeAnnouncementText.transform.DOScale(1f, 0.2f));
+
+        // 3. Stay on screen during the dramatic pause
+        seq.AppendInterval(dramaticPauseDuration - 0.2f);
+
+        // 4. Pop out and fade away
+        seq.Append(upgradeAnnouncementText.transform.DOScale(0.5f, 0.3f).SetEase(Ease.InBack));
+        seq.Join(upgradeAnnouncementText.DOFade(0f, 0.3f));
+
+        // 5. Disable the object when finished
+        seq.OnComplete(() => upgradeAnnouncementText.gameObject.SetActive(false));
+    }
+
     public void BuyStrengthUpgrade()
     {
         if (_isUpgradingCutscene) return;
@@ -156,6 +219,8 @@ public class GameLevelManager : MonoBehaviour
     {
         _isUpgradingCutscene = true;
 
+        HideCutsceneUI();
+
         UpdateBoulderStatsWithoutRecreatingCharacter();
 
         // 1. Pan camera ONLY to the boulder
@@ -177,19 +242,28 @@ public class GameLevelManager : MonoBehaviour
             boulderParticles[boulderIdx].Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
             boulderParticles[boulderIdx].Play(true);
         }
+        string message = "BOULDER UPGRADED!"; // Fallback text
+        if (boulderUpgradeMessages != null && requiredIndex < boulderUpgradeMessages.Length)
+        {
+            // Use the text assigned in the inspector for this specific tier
+            message = boulderUpgradeMessages[requiredIndex];
+        }
+        ShowUpgradeAnnouncement(message);
         yield return new WaitForSeconds(dramaticPauseDuration);
 
         // 4. Reset camera
         if (launchSequenceManager != null) launchSequenceManager.ResetToIdleCamera();
 
         UpdateUI();
+
+        RestoreCutsceneUI();
         _isUpgradingCutscene = false;
     }
 
     private IEnumerator StrengthMilestoneCutsceneRoutine()
     {
         _isUpgradingCutscene = true;
-
+        HideCutsceneUI();
         // 1. Pan camera to the stable ANCHOR on the ground instead of the temporary weapon
         if (launchSequenceManager != null && characterSkinManager != null)
         {
@@ -214,12 +288,21 @@ public class GameLevelManager : MonoBehaviour
         // 3. Play the weapon upgrade particle effect dynamically
         if (characterSkinManager != null) characterSkinManager.PlayActiveWeaponParticle();
 
+        string message = "WEAPON UPGRADED!"; // Fallback text
+        if (weaponUpgradeMessages != null && requiredIndex < weaponUpgradeMessages.Length)
+        {
+            // Use the text assigned in the inspector for this specific tier
+            message = weaponUpgradeMessages[requiredIndex];
+        }
+        ShowUpgradeAnnouncement(message);
+
         yield return new WaitForSeconds(dramaticPauseDuration);
 
         // 4. Reset camera
         if (launchSequenceManager != null) launchSequenceManager.ResetToIdleCamera();
 
         UpdateUI();
+        RestoreCutsceneUI();
         _isUpgradingCutscene = false;
     }
 
@@ -295,6 +378,44 @@ public class GameLevelManager : MonoBehaviour
         }
     }
 
+    private void HideCutsceneUI()
+    {
+        if (launchSequenceManager == null) return;
+
+        // Shrink the upgrade panel
+        if (launchSequenceManager.upgradePanel != null)
+        {
+            launchSequenceManager.upgradePanel.transform.DOKill();
+            launchSequenceManager.upgradePanel.transform.DOScale(Vector3.zero, 0.3f).SetEase(Ease.InBack);
+        }
+
+        // Shrink the Tap to Play text
+        if (launchSequenceManager.tapToPlayText != null)
+        {
+            launchSequenceManager.tapToPlayText.transform.DOKill();
+            launchSequenceManager.tapToPlayText.transform.DOScale(Vector3.zero, 0.3f).SetEase(Ease.InBack);
+        }
+    }
+
+    private void RestoreCutsceneUI()
+    {
+        if (launchSequenceManager == null) return;
+
+        // Pop the upgrade panel back in
+        if (launchSequenceManager.upgradePanel != null)
+        {
+            launchSequenceManager.upgradePanel.transform.DOKill();
+            launchSequenceManager.upgradePanel.transform.DOScale(Vector3.one, 0.4f).SetEase(Ease.OutBack);
+        }
+
+        // Pop the Tap to Play text back in
+        if (launchSequenceManager.tapToPlayText != null)
+        {
+            launchSequenceManager.tapToPlayText.transform.DOKill();
+            launchSequenceManager.tapToPlayText.transform.DOScale(Vector3.one, 0.4f).SetEase(Ease.OutBack);
+        }
+    }
+
     public string FormatMoney(double amount)
     {
         if (amount >= 1000000000) return (amount / 1000000000D).ToString("0.##") + "B";
@@ -321,12 +442,134 @@ public class GameLevelManager : MonoBehaviour
 
     private void StartEndRunSequence() => StartCoroutine(EndRunRoutine());
 
+    // ==========================================
+    // REWARD & GAME OVER SEQUENCE
+    // ==========================================
+
     private IEnumerator EndRunRoutine()
     {
         currentState = GameState.Idle;
-        float finalDist = arcadeBoulder.transform.position.z;
-        RewardManager.Instance.FinalizeRunRewards(finalDist);
-        yield return new WaitForSeconds(2.5f);
+        _lastRunDistance = arcadeBoulder.transform.position.z;
+        Vector3 boulderPos = arcadeBoulder.transform.position;
+
+        bool isNewRecord = _lastRunDistance > PlayerDataManager.Instance.data.bestDistance;
+
+        // 1. Deflate the boulder smoothly
+        if (arcadeBoulder.visualMesh != null)
+        {
+            arcadeBoulder.visualMesh.DOScale(Vector3.zero, 1f).SetEase(Ease.InBack);
+        }
+        else
+        {
+            arcadeBoulder.transform.DOScale(Vector3.zero, 1f).SetEase(Ease.InBack);
+        }
+
+        if (isNewRecord && HighScoreVisuals.Instance != null)
+        {
+            HighScoreVisuals.Instance.PlantNewRecordFlag(boulderPos);
+        }
+
+        yield return new WaitForSeconds(0.8f);
+
+        // 2. Spawn the 3D Coin Fountain
+        _activeRewardCoins.Clear();
+        for (int i = 0; i < visualCoinsToSpawn; i++)
+        {
+            GameObject coin = Instantiate(coin3DPrefab, boulderPos, Quaternion.identity);
+            _activeRewardCoins.Add(coin);
+
+            Vector2 randomCircle = Random.insideUnitCircle * 3f;
+            Vector3 targetPos = boulderPos + new Vector3(randomCircle.x, 0f, randomCircle.y);
+
+            coin.transform.DOJump(targetPos, jumpPower: Random.Range(3f, 6f), numJumps: 1, duration: 0.6f).SetEase(Ease.OutQuad);
+            coin.transform.DORotate(new Vector3(Random.Range(0, 360), Random.Range(0, 360), Random.Range(0, 360)), 0.6f, RotateMode.FastBeyond360);
+
+            yield return new WaitForSeconds(0.02f);
+        }
+
+        yield return new WaitForSeconds(0.5f);
+
+        // 3. Show Panel & Populate Data
+        if (gameOverPanel != null) gameOverPanel.SetActive(true);
+        if (continueButton != null) continueButton.interactable = false;
+
+        // --- SAVE THE BEST DISTANCE BEFORE UI UPDATE ---
+        PlayerDataManager.Instance.UpdateBestDistance(_lastRunDistance);
+
+        // Populate distance texts
+        if (currentRunText != null) currentRunText.text = $"{Mathf.FloorToInt(_lastRunDistance)}m";
+        if (bestRunText != null) bestRunText.text = $"Best : {Mathf.FloorToInt(PlayerDataManager.Instance.data.bestDistance)}m";
+
+        // Populate total gold (Gold BEFORE the run ended)
+        if (totalGoldText != null) totalGoldText.text = FormatMoney(PlayerDataManager.Instance.data.gold);
+
+        // --- CALCULATE ACTUAL GOLD EARNED FOR UI TALLY ---
+        int actualGoldEarned = RewardManager.Instance.CalculateRunRewards(_lastRunDistance);
+        int displayGold = 0;
+
+        if (gameOverTallyText != null)
+        {
+            DOTween.To(() => displayGold, x =>
+            {
+                displayGold = x;
+                gameOverTallyText.text = "+" + FormatMoney(displayGold);
+            }, actualGoldEarned, 1.5f).SetEase(Ease.OutExpo);
+        }
+
+        yield return new WaitForSeconds(1.5f);
+
+        // 4. Enable Continue Button
+        if (continueButton != null) continueButton.interactable = true;
+    }
+
+    // Link this method to your UI Button's OnClick event in the Inspector!
+    public void OnContinuePressed()
+    {
+        if (continueButton != null) continueButton.interactable = false; // Prevent double-clicks
+        StartCoroutine(FinalizeAndReloadRoutine());
+    }
+
+    private IEnumerator FinalizeAndReloadRoutine()
+    {
+        Camera mainCam = Camera.main;
+
+        // 1. Fly 3D coins directly to the 2D UI Text
+        foreach (var coin in _activeRewardCoins)
+        {
+            if (mainCam != null && coin != null)
+            {
+                // Convert screen target to world space for the 3D coin
+                Vector3 screenTarget = goldTextTarget.position;
+                screenTarget.z = 5f;
+                Vector3 worldTarget = mainCam.ScreenToWorldPoint(screenTarget);
+
+                coin.transform.DOMove(worldTarget, 0.6f).SetEase(Ease.InBack);
+            }
+
+            if (coin != null) coin.transform.DOScale(Vector3.zero, 0.6f).SetEase(Ease.InBack);
+            yield return new WaitForSeconds(0.02f);
+        }
+
+        yield return new WaitForSeconds(0.6f);
+
+        // 2. Finalize rewards & punch the UI text to show it registered
+        RewardManager.Instance.FinalizeRunRewards(_lastRunDistance);
+        UpdateUI();
+
+        if (goldTextTarget != null)
+        {
+            goldTextTarget.DOPunchScale(new Vector3(0.3f, 0.3f, 0.3f), 0.3f, 5);
+        }
+
+        // Cleanup the 3D coins
+        foreach (var coin in _activeRewardCoins)
+        {
+            if (coin != null) Destroy(coin);
+        }
+        _activeRewardCoins.Clear();
+
+        // 3. Reset the scene
+        yield return new WaitForSeconds(1f);
         SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
     }
 

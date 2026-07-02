@@ -15,6 +15,7 @@ public class PlayerData
     // --- Prestige/Progress ---
     public int currentLevelIndex; // For Biome progression
     public int prestigeCount;
+    public float bestDistance;
 
     // Constructor sets default "New Game" values
     public PlayerData()
@@ -28,5 +29,6 @@ public class PlayerData
 
         currentLevelIndex = 0;
         prestigeCount = 0;
+        bestDistance = 0f;
     }
 }

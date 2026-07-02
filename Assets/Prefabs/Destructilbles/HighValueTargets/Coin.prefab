@@ -99,7 +99,7 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: f882d8c128c89d64dad582219e700693,
         type: 3}
       insertIndex: -1
-      addedObject: {fileID: 475637281331016067}
+      addedObject: {fileID: -1219831009241395684}
   m_SourcePrefab: {fileID: 100100000, guid: f882d8c128c89d64dad582219e700693, type: 3}
 --- !u!1 &4323554170431308833 stripped
 GameObject:
@@ -128,7 +128,7 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 0.099999994, y: 0.099999994, z: 0.021677818}
   m_Center: {x: 0, y: 0, z: 0.01}
---- !u!114 &475637281331016067
+--- !u!114 &-1219831009241395684
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -137,9 +137,9 @@ MonoBehaviour:
   m_GameObject: {fileID: 4323554170431308833}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1825f86dea544914296c3a790cca8549, type: 3}
+  m_Script: {fileID: 11500000, guid: fd95bc29c9067f540b2939d7ae20a6bb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  toughnessLevel: 1
-  fracturedPrefab: {fileID: 143964, guid: 09d9de58ef3bf5444ac94afa0e6013cb, type: 3}
-  dustEffectPrefab: {fileID: 0}
+  rewardGold: 1000
+  collectionEffectPrefab: {fileID: 2837609728858217907, guid: 30538aa757d5768459b127b9b70d4362,
+    type: 3}

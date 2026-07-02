@@ -1,200 +1,130 @@
 using UnityEngine;
-using DG.Tweening; // Required for the pop and hover animations
+using System.Collections;
 
+[RequireComponent(typeof(Collider))]
 public class HighValueTarget : MonoBehaviour
 {
-    [Header("Toughness & Economy")]
-    [Range(1, 50)]
-    [Tooltip("Matches the standard toughness tiers so you know how hard it is to break")]
-    public int toughnessLevel = 10;
+    [Header("Rewards")]
+    [Tooltip("The massive payout for hitting this rare target.")]
+    public float rewardGold = 1000f;
 
-    [Tooltip("How much total gold this drops when destroyed")]
-    public float totalGoldReward = 500f;
+    [Header("Visuals & Effects")]
+    public GameObject collectionEffectPrefab;
 
-    [Header("Visuals & Markers")]
-    [Tooltip("The main center of the object to base the offsets on (Leave empty to use this GameObject)")]
-    public Transform mainBodyTransform;
+    [Header("Retro Spin Animation")]
+    [Tooltip("Assign the visual child object here so the physical collider doesn't spin.")]
+    public Transform visualMesh;
+    [Tooltip("How long it takes to complete one full 360-degree rotation.")]
+    public float spinDuration = 1.5f;
+    [Tooltip("Target frames per second for that choppy, retro arcade look.")]
+    public int spinFPS = 15;
 
-    [Tooltip("The gold coin or icon that hovers above")]
-    public GameObject hoveringCoinPrefab;
-    public Vector3 hoveringCoinOffset = new Vector3(0, 3f, 0);
+    private string _uniqueHashID;
+    private bool _isCollected = false;
 
-    [Tooltip("The glowing ring or marker at the base")]
-    public GameObject feetMarkerPrefab;
-    public Vector3 feetMarkerOffset = new Vector3(0, 0.1f, 0);
+    private void Awake()
+    {
+        // 1. GENERATE UNIQUE HASH
+        float posX = Mathf.Round(transform.position.x * 10f);
+        float posY = Mathf.Round(transform.position.y * 10f);
+        float posZ = Mathf.Round(transform.position.z * 10f);
 
-    [Header("Destruction Effects")]
-    public GameObject fracturedPrefab;
-    [Tooltip("Special particle explosion for high-value targets")]
-    public GameObject highValueDeathEffect;
+        _uniqueHashID = $"HVT_{gameObject.name}_{posX}_{posY}_{posZ}";
 
-    [SerializeField] private string prefName = "HV[NUMBER]";
-
-    // Internal Math State
-    private float _actualResistance;
-    private float _actualRequiredMass;
-    private float _actualHardness;
-    private bool _isBroken = false;
-
-    // Track spawned visuals so we can clean up their tweens
-    private GameObject _spawnedCoin;
-    private GameObject _spawnedFeetMarker;
-
+        // 2. CHECK IF ALREADY COLLECTED
+        if (PlayerPrefs.GetInt(_uniqueHashID, 0) == 1)
+        {
+            Destroy(gameObject);
+        }
+    }
 
     private void Start()
     {
-        if(PlayerPrefs.GetInt(prefName , 0) == 1) 
-        {
-            Destroy(gameObject);
-            return;
-        }
-
-        // 1. Calculate the exact same physics requirements as the standard destructibles
-        float minRes = 20f, maxRes = 25000f;
-        float minMass = 0f, maxMass = 600f;
-        float minHard = 0.2f, maxHard = 1.0f;
-
-        float t = (toughnessLevel - 1) / 49f;
-
-        _actualResistance = Mathf.Lerp(minRes, maxRes, t);
-        _actualRequiredMass = Mathf.Lerp(minMass, maxMass, t);
-        _actualHardness = Mathf.Lerp(minHard, maxHard, t);
-
-        // 2. Setup the visual markers using DOTween
-        SetupVisualMarkers();
+        // Kick off the low-framerate spin routine
+        StartCoroutine(RetroSpinRoutine());
     }
 
-    private void SetupVisualMarkers()
+    private IEnumerator RetroSpinRoutine()
     {
-        // Use the assigned body transform, or default to the root if none was assigned
-        Transform anchor = mainBodyTransform != null ? mainBodyTransform : transform;
+        Transform targetToSpin = visualMesh != null ? visualMesh : transform;
 
-        // --- FEET MARKER ---
-        if (feetMarkerPrefab != null)
+        // Calculate the timing and movement for the stepped frames
+        float waitTime = 1f / spinFPS;
+        WaitForSeconds wait = new WaitForSeconds(waitTime);
+
+        // How many degrees it needs to turn per frame to complete 360 in 'spinDuration'
+        float degreesPerSecond = 360f / spinDuration;
+        float degreesPerStep = degreesPerSecond * waitTime;
+
+        while (!_isCollected)
         {
-            _spawnedFeetMarker = Instantiate(feetMarkerPrefab, anchor);
-            _spawnedFeetMarker.transform.localPosition = feetMarkerOffset;
-
-            // Optional: Slowly pulse the feet marker using DOTween
-            _spawnedFeetMarker.transform.DOScale(Vector3.one * 1.2f, 1f)
-                .SetLoops(-1, LoopType.Yoyo)
-                .SetEase(Ease.InOutSine);
-        }
-
-        // --- HOVERING COIN ---
-        if (hoveringCoinPrefab != null)
-        {
-            _spawnedCoin = Instantiate(hoveringCoinPrefab, anchor);
-            _spawnedCoin.transform.localPosition = hoveringCoinOffset;
-
-            // Start scale at zero for the "Pop" effect
-            _spawnedCoin.transform.localScale = Vector3.zero;
-
-            // Pop in!
-            _spawnedCoin.transform.DOScale(Vector3.one, 0.5f).SetEase(Ease.OutBack);
-
-            // Smoothly bob up and down
-            _spawnedCoin.transform.DOLocalMoveY(hoveringCoinOffset.y + 0.5f, 1f)
-                .SetLoops(-1, LoopType.Yoyo)
-                .SetEase(Ease.InOutSine);
-
-            // Continuously rotate 360 degrees
-            _spawnedCoin.transform.DOLocalRotate(new Vector3(0, 360, 0), 1.5f, RotateMode.FastBeyond360)
-                .SetLoops(-1, LoopType.Restart)
-                .SetEase(Ease.Linear);
+            // Apply the rotation instantly, then wait for the next specific frame tick
+            targetToSpin.Rotate(0f, degreesPerStep, 0f, Space.Self);
+            yield return wait;
         }
     }
 
     void OnTriggerEnter(Collider other)
     {
-        if (_isBroken) return;
+        if (_isCollected) return;
 
         if (other.CompareTag("Boulder"))
         {
             ArcadeBoulder boulder = other.GetComponent<ArcadeBoulder>();
             if (boulder == null) return;
 
-            float playerMass = other.attachedRigidbody ? other.attachedRigidbody.mass : 50f;
-            float playerSpeedMs = boulder.GetCurrentSpeedMs();
+            // --- 1. LOCK IT DOWN ---
+            _isCollected = true;
+            GetComponent<Collider>().enabled = false;
 
-            // 1. THE GATEKEEPER CHECK
-            if (playerMass < _actualRequiredMass)
+            // --- 2. SAVE TO PLAYER PREFS ---
+            PlayerPrefs.SetInt(_uniqueHashID, 1);
+            PlayerPrefs.Save();
+
+            // --- 3. PAY THE PLAYER ---
+            if (RewardManager.Instance != null)
             {
-                boulder.ApplyBonk();
-                return;
+                RewardManager.Instance.ProcessDestructionReward(rewardGold, transform.position.z);
             }
 
-            int strengthLevel = PlayerDataManager.Instance.data.strengthLevel;
-
-            // Factor in the speed! We clamp it to a minimum of 5 so a slow roll doesn't become mathematically 0.
-            // We use a 0.5f multiplier to keep the late-game values balanced with your economy.
-            float speedFactor = Mathf.Max(playerSpeedMs, 5f) * 0.5f;
-
-            float impactPower = playerMass * strengthLevel * speedFactor;
-
-            if (impactPower >= _actualResistance)
+            // Note: Make sure BoulderComboText handles the AddGold logic if you are keeping this!
+            if (BoulderComboText.Instance != null)
             {
-                // --- SUCCESS: SMASH! ---
-                _isBroken = true;
-
-                float powerRatioUsed = _actualResistance / impactPower;
-                float damagePercentage = Mathf.Clamp01(powerRatioUsed * _actualHardness);
-
-                boulder.ApplyImpactSlowdown(damagePercentage);
-
-                // Give the massive custom reward
-                if (RewardManager.Instance != null)
-                {
-                    RewardManager.Instance.ProcessDestructionReward(totalGoldReward, transform.position.z);
-                }
-
-                // --- THE NEW FLOATING TEXT TRIGGER ---
-                if (BoulderComboText.Instance != null)
-                {
-                    BoulderComboText.Instance.AddGold(totalGoldReward);
-                }
-
-                Vector3 estimatedVel = other.attachedRigidbody ? other.attachedRigidbody.velocity : Vector3.forward * playerSpeedMs;
-                Shatter(other.ClosestPoint(transform.position), estimatedVel);
-                PlayerPrefs.SetInt(prefName, 1); // Mark this specific target as destroyed in PlayerPrefs
+                BoulderComboText.Instance.AddGold(rewardGold);
             }
-            else
-            {
-                // --- FAIL: BONK! ---
-                boulder.ApplyBonk();
-            }
+
+            // --- 4. SPAWN EFFECTS & DESTROY ---
+            ShatterAndCollect();
         }
     }
 
-    void Shatter(Vector3 hitPoint, Vector3 playerVelocity)
+    private void ShatterAndCollect()
     {
-        // CRITICAL: Kill the tweens before destroying the object to prevent memory leaks!
-        if (_spawnedCoin != null) _spawnedCoin.transform.DOKill();
-        if (_spawnedFeetMarker != null) _spawnedFeetMarker.transform.DOKill();
-
-        // Spawn the broken pieces
-        if (fracturedPrefab != null)
+        if (collectionEffectPrefab != null)
         {
-            GameObject brokenObj = ObjectPooler.Instance.Spawn(fracturedPrefab, transform.position, transform.rotation);
-
-            Rigidbody[] pieces = brokenObj.GetComponentsInChildren<Rigidbody>();
-            foreach (Rigidbody rb in pieces)
+            if (ObjectPooler.Instance != null)
             {
-                rb.AddExplosionForce(_actualResistance / 2f, hitPoint, 10f);
-                rb.velocity += playerVelocity * 0.7f;
+                ObjectPooler.Instance.Spawn(collectionEffectPrefab, transform.position, Quaternion.identity);
             }
-
-            DebrisFader fader = brokenObj.GetComponent<DebrisFader>();
-            if (fader == null) fader = brokenObj.AddComponent<DebrisFader>();
-            fader.BeginFade();
+            else
+            {
+                Instantiate(collectionEffectPrefab, transform.position, Quaternion.identity);
+            }
         }
 
-        // Spawn the unique high-value explosion
-        if (highValueDeathEffect != null)
+        if (transform.parent != null)
         {
-            ObjectPooler.Instance.Spawn(highValueDeathEffect, hitPoint, Quaternion.identity);
+            Destroy(transform.parent.gameObject);
         }
+        else
+        {
+            Destroy(gameObject);
+        }
+    }
 
-        Destroy(gameObject);
+    public void DebugResetTarget()
+    {
+        PlayerPrefs.SetInt(_uniqueHashID, 0);
+        PlayerPrefs.Save();
     }
 }

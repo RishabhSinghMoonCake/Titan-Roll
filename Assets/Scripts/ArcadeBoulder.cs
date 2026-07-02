@@ -47,6 +47,15 @@ public class ArcadeBoulder : MonoBehaviour
 
     [Header("UI & Distance")]
     [SerializeField] private TextMeshProUGUI distanceDisplay;
+    [SerializeField] private TextMeshProUGUI speedDisplay;
+    [SerializeField] private TextMeshProUGUI kmhText;
+
+    [Tooltip("How fast the speedometer text catches up to the actual speed.")]
+    public float speedUIDampening = 5f;
+    [Tooltip("Divides the actual speed for UI display so the numbers aren't massive.")]
+    public float speedUIDivisor = 2f; // Tweak this in the inspector!
+
+    private float _displayedSpeed = 0f; // Tracks the smoothed UI number
 
     [Header("Visuals")]
     public Transform visualMesh;
@@ -83,6 +92,8 @@ public class ArcadeBoulder : MonoBehaviour
         _impulseSource = GetComponent<CinemachineImpulseSource>();
 
         if (distanceDisplay != null) distanceDisplay.alpha = 0f;
+        if (speedDisplay != null) speedDisplay.alpha = 0f;
+        if(kmhText != null) kmhText.alpha = 0f;
     }
 
     public void ApplyUpgrades(int massLevel)
@@ -130,6 +141,19 @@ public class ArcadeBoulder : MonoBehaviour
             distanceDisplay.color = Color.white;
             distanceDisplay.DOFade(1f, 0.5f);
         }
+
+        if (speedDisplay != null)
+        {
+            _displayedSpeed = 0f;
+            speedDisplay.DOKill();
+            speedDisplay.text = "0 km/h";
+            speedDisplay.color = Color.white;
+            speedDisplay.DOFade(1f, 0.5f);
+            kmhText.DOKill();
+            kmhText.text = "km/h";
+            kmhText.color = Color.white;
+            kmhText.DOFade(1f, 0.5f);
+        }
     }
 
     private void Update()
@@ -150,19 +174,25 @@ public class ArcadeBoulder : MonoBehaviour
                 UpdateDistanceUI(currentDistanceInt);
             }
         }
+
+        if (speedDisplay != null)
+        {
+            // 1. Get the actual speed and scale it down for the UI
+            float targetDisplaySpeed = (rb.velocity.magnitude * 3.6f) / speedUIDivisor;
+
+            // 2. Smoothly transition the displayed speed toward the target speed
+            _displayedSpeed = Mathf.Lerp(_displayedSpeed, targetDisplaySpeed, Time.deltaTime * speedUIDampening);
+
+            // 3. Update the text (added " km/h" back in to match your Launch method)
+            speedDisplay.text = $"{Mathf.FloorToInt(_displayedSpeed)}";
+        }
     }
 
     private void UpdateDistanceUI(int distance)
     {
-        if (distance < 1000)
-        {
-            distanceDisplay.text = $"{distance} m";
-        }
-        else
-        {
-            float km = distance / 1000f;
-            distanceDisplay.text = $"{km:F1} km";
-        }
+        distanceDisplay.text = $"{distance} m";
+        
+       
 
         if (distance >= _nextPopDistance)
         {
@@ -270,9 +300,9 @@ public class ArcadeBoulder : MonoBehaviour
         Vector3 slopeForward = Vector3.ProjectOnPlane(heading, currentNormal).normalized;
         float slopeDot = Vector3.Dot(slopeForward, Vector3.up);
 
-        if (Mathf.Abs(slopeDot) > 0.05f)
+        if (slopeDot < -0.05f) // Changed to only trigger on DOWNHILLS
         {
-            // Downhill gravity assist or uphill dynamic reduction
+            // Downhill gravity assist. Uphills now rely entirely on entry momentum.
             rb.AddForce(slopeForward * (-slopeInfluenceFactor * slopeDot), ForceMode.Acceleration);
         }
 
@@ -398,6 +428,26 @@ public class ArcadeBoulder : MonoBehaviour
             distanceDisplay.DOKill();
             distanceDisplay.transform.DOKill(true);
             distanceDisplay.DOFade(0f, 0.5f);
+        }
+
+        if (speedDisplay != null)
+        {
+            speedDisplay.DOKill();
+            speedDisplay.DOFade(0f, 0.5f); // Fades the alpha
+
+            // Tell DOTween to animate our tracker variable down to 0 over 0.5 seconds,
+            // and update the text component on every step of that animation.
+            DOTween.To(() => _displayedSpeed, x =>
+            {
+                _displayedSpeed = x;
+                speedDisplay.text = $"{Mathf.FloorToInt(_displayedSpeed)}";
+            }, 0f, 0.5f);
+
+            if (kmhText != null)
+            {
+                kmhText.DOKill();
+                kmhText.DOFade(0f, 0.5f);
+            }
         }
     }
 }

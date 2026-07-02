@@ -34,6 +34,7 @@ public class LaunchSequenceManager : MonoBehaviour
     public Slider timingSlider;
     public HandTutorial handTutorialUI;
     public TextMeshProUGUI powerPercentageText;
+    public TextMeshProUGUI tapToPlayText;
 
     [Header("Phase Settings")]
     public GameObject upgradePanel;
@@ -67,6 +68,13 @@ public class LaunchSequenceManager : MonoBehaviour
 
         if (handTutorialUI != null) handTutorialUI.gameObject.SetActive(false);
         if (powerPercentageText != null) powerPercentageText.gameObject.SetActive(false);
+
+        if (tapToPlayText != null)
+        {
+            tapToPlayText.transform.DOKill();
+            tapToPlayText.transform.localScale = Vector3.one;
+            tapToPlayText.gameObject.SetActive(true);
+        }
 
         StopAllCoroutines();
         StartCoroutine(PreLaunchSequence());
@@ -105,6 +113,23 @@ public class LaunchSequenceManager : MonoBehaviour
             yield return null;
         }
 
+        if (upgradePanel != null && upgradePanel.activeSelf)
+        {
+            upgradePanel.transform.DOKill();
+            upgradePanel.transform.DOScale(Vector3.zero, 0.25f)
+                .SetEase(Ease.InBack)
+                .OnComplete(() => upgradePanel.SetActive(false));
+        }
+
+        if (tapToPlayText != null && tapToPlayText.gameObject.activeSelf)
+        {
+            tapToPlayText.transform.DOKill();
+            tapToPlayText.transform.DOScale(Vector3.zero, 0.25f)
+                .SetEase(Ease.InBack)
+                .OnComplete(() => tapToPlayText.gameObject.SetActive(false));
+        }
+
+
         // --- PHASE 2: TIMING CHANGED HERE ---
         // The weapon now remains completely stationary at its spawn point until this line fires
         yield return StartCoroutine(FlyWeaponToHand());
@@ -128,13 +153,7 @@ public class LaunchSequenceManager : MonoBehaviour
 
         if (handTutorialUI != null) handTutorialUI.PlayTutorial();
 
-        if (upgradePanel != null && upgradePanel.activeSelf)
-        {
-            upgradePanel.transform.DOKill();
-            upgradePanel.transform.DOScale(Vector3.zero, 0.25f)
-                .SetEase(Ease.InBack)
-                .OnComplete(() => upgradePanel.SetActive(false));
-        }
+        
 
         bool isDragging = false;
         Vector2 startTouchPos = Vector2.zero;
