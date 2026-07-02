@@ -577,6 +577,8 @@ GameObject:
   - component: {fileID: 1779732809062565519}
   - component: {fileID: 2080244687738888150}
   - component: {fileID: 1558504483920128919}
+  - component: {fileID: 1583662567686596714}
+  - component: {fileID: 8072220707345408905}
   m_Layer: 0
   m_Name: Front carType B
   m_TagString: Untagged
@@ -653,6 +655,44 @@ MeshRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 0
   m_AdditionalVertexStreams: {fileID: 0}
+--- !u!65 &1583662567686596714
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1409378563072685774}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 2.6809466, y: 3.708341, z: 20.234842}
+  m_Center: {x: -0.011469722, y: 1.3782991, z: -0.29122066}
+--- !u!114 &8072220707345408905
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1409378563072685774}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1825f86dea544914296c3a790cca8549, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  targetMassLevel: 10
+  maxDamagePenalty: 0.4
+  fracturedPrefab: {fileID: 0}
+  dustEffectPrefab: {fileID: 1952076019714368, guid: d42852d7985301b42a647ff270d3d088,
+    type: 3}
 --- !u!1 &1427132495417895352
 GameObject:
   m_ObjectHideFlags: 0
@@ -1147,6 +1187,8 @@ GameObject:
   - component: {fileID: 6221091897384824028}
   - component: {fileID: 7125295584063154856}
   - component: {fileID: 8611758195705042515}
+  - component: {fileID: 2472264491938848654}
+  - component: {fileID: 8932950575930853611}
   m_Layer: 0
   m_Name: Intermediate carType B
   m_TagString: Untagged
@@ -1221,6 +1263,44 @@ MeshRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 0
   m_AdditionalVertexStreams: {fileID: 0}
+--- !u!65 &2472264491938848654
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2647699147177186580}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 2.6808465, y: 3.6576273, z: 20.546204}
+  m_Center: {x: -0.0025031567, y: 1.3957146, z: -0.22701168}
+--- !u!114 &8932950575930853611
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2647699147177186580}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1825f86dea544914296c3a790cca8549, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  targetMassLevel: 10
+  maxDamagePenalty: 0.4
+  fracturedPrefab: {fileID: 0}
+  dustEffectPrefab: {fileID: 1952076019714368, guid: d42852d7985301b42a647ff270d3d088,
+    type: 3}
 --- !u!1 &2752261681757944545
 GameObject:
   m_ObjectHideFlags: 0
@@ -1315,6 +1395,8 @@ GameObject:
   - component: {fileID: 6076910529200928640}
   - component: {fileID: 9211919237153135835}
   - component: {fileID: 4511202856037795196}
+  - component: {fileID: 3636341460891081799}
+  - component: {fileID: 5503151941016849181}
   m_Layer: 0
   m_Name: Pantograph carType B
   m_TagString: Untagged
@@ -1389,6 +1471,44 @@ MeshRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 0
   m_AdditionalVertexStreams: {fileID: 0}
+--- !u!65 &3636341460891081799
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2892705976575234999}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 2.6808467, y: 4.4579706, z: 20.546204}
+  m_Center: {x: -0.0005016327, y: 1.7958862, z: -0.19974661}
+--- !u!114 &5503151941016849181
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2892705976575234999}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1825f86dea544914296c3a790cca8549, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  targetMassLevel: 10
+  maxDamagePenalty: 0.4
+  fracturedPrefab: {fileID: 0}
+  dustEffectPrefab: {fileID: 1952076019714368, guid: d42852d7985301b42a647ff270d3d088,
+    type: 3}
 --- !u!1 &2910528674448500560
 GameObject:
   m_ObjectHideFlags: 0
@@ -1793,7 +1913,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1825f86dea544914296c3a790cca8549, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  toughnessLevel: 35
+  targetMassLevel: 1
+  maxDamagePenalty: 1
   fracturedPrefab: {fileID: 0}
   dustEffectPrefab: {fileID: 0}
 --- !u!1 &4036554282153967989
@@ -2056,6 +2177,8 @@ GameObject:
   - component: {fileID: 8783940208372937379}
   - component: {fileID: 1889924173799719023}
   - component: {fileID: 1797103311171399079}
+  - component: {fileID: 4744108255441431817}
+  - component: {fileID: 5029506947103440937}
   m_Layer: 0
   m_Name: Intermediate carType B
   m_TagString: Untagged
@@ -2130,6 +2253,44 @@ MeshRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 0
   m_AdditionalVertexStreams: {fileID: 0}
+--- !u!65 &4744108255441431817
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4554732886648740180}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 2.6808465, y: 3.6576273, z: 20.546204}
+  m_Center: {x: -0.0025031567, y: 1.3957146, z: -0.22701168}
+--- !u!114 &5029506947103440937
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4554732886648740180}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1825f86dea544914296c3a790cca8549, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  targetMassLevel: 10
+  maxDamagePenalty: 0.4
+  fracturedPrefab: {fileID: 0}
+  dustEffectPrefab: {fileID: 1952076019714368, guid: d42852d7985301b42a647ff270d3d088,
+    type: 3}
 --- !u!1 &4561907203187246448
 GameObject:
   m_ObjectHideFlags: 0
@@ -2141,6 +2302,8 @@ GameObject:
   - component: {fileID: 9215521868623971414}
   - component: {fileID: 114602697281068492}
   - component: {fileID: 1937919719797716745}
+  - component: {fileID: 1188556395419767645}
+  - component: {fileID: 3137395281412337074}
   m_Layer: 0
   m_Name: Front carType B
   m_TagString: Untagged
@@ -2217,6 +2380,44 @@ MeshRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 0
   m_AdditionalVertexStreams: {fileID: 0}
+--- !u!65 &1188556395419767645
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4561907203187246448}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 2.6809466, y: 3.708341, z: 20.234842}
+  m_Center: {x: -0.011469722, y: 1.3782991, z: -0.29122066}
+--- !u!114 &3137395281412337074
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4561907203187246448}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1825f86dea544914296c3a790cca8549, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  targetMassLevel: 10
+  maxDamagePenalty: 0.4
+  fracturedPrefab: {fileID: 0}
+  dustEffectPrefab: {fileID: 1952076019714368, guid: d42852d7985301b42a647ff270d3d088,
+    type: 3}
 --- !u!1 &4648237310537486812
 GameObject:
   m_ObjectHideFlags: 0
@@ -4141,6 +4342,8 @@ GameObject:
   - component: {fileID: 4607481704577019971}
   - component: {fileID: 4204997043977361798}
   - component: {fileID: 8687831598281533751}
+  - component: {fileID: 3446948425721531902}
+  - component: {fileID: 3018705257035713730}
   m_Layer: 0
   m_Name: Intermediate carType B
   m_TagString: Untagged
@@ -4215,6 +4418,44 @@ MeshRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 0
   m_AdditionalVertexStreams: {fileID: 0}
+--- !u!65 &3446948425721531902
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8837427955349878933}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 2.6808465, y: 3.6576273, z: 20.546204}
+  m_Center: {x: -0.0025031567, y: 1.3957146, z: -0.22701168}
+--- !u!114 &3018705257035713730
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8837427955349878933}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1825f86dea544914296c3a790cca8549, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  targetMassLevel: 10
+  maxDamagePenalty: 0.4
+  fracturedPrefab: {fileID: 0}
+  dustEffectPrefab: {fileID: 1952076019714368, guid: d42852d7985301b42a647ff270d3d088,
+    type: 3}
 --- !u!1 &8979970434461677322
 GameObject:
   m_ObjectHideFlags: 0

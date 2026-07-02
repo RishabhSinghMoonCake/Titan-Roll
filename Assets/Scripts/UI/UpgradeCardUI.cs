@@ -13,6 +13,7 @@ public class UpgradeCardUI : MonoBehaviour
     [Header("Text References")]
     public TextMeshProUGUI levelText;
     public TextMeshProUGUI costText;
+    public TextMeshProUGUI IncomeMultText;
 
     [Header("Segment Visuals")]
     public Image[] segments;
@@ -55,6 +56,19 @@ public class UpgradeCardUI : MonoBehaviour
         {
             segments[i].color = (i < filledSegments) ? activeSegmentColor : inactiveSegmentColor;
         }
+
+        
+        int currentLevel = PlayerDataManager.Instance.data.greedLevel;
+
+        // Fetch the exact multiplier from the new system
+        float currentMult = RewardManager.Instance.GetIncomeMultiplier();
+
+        // Format it to show the "x" and exactly one decimal point
+        if (IncomeMultText != null)
+        {
+            IncomeMultText.text = $"x{currentMult:F1}";
+        }
+        
 
         // 3. Handle Dull vs Bright
         _canvasGroup.alpha = canAfford ? 1.0f : dullAlpha;

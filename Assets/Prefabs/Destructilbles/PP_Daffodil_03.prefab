@@ -12,7 +12,7 @@ GameObject:
   - component: {fileID: 5426457248319090160}
   - component: {fileID: 3229604626257403868}
   - component: {fileID: 690451614722598207}
-  - component: {fileID: 9083167814212763611}
+  - component: {fileID: -8158153862903732019}
   m_Layer: 8
   m_Name: PP_Daffodil_03
   m_TagString: Untagged
@@ -106,7 +106,7 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 0.09743785, y: 0.32143268, z: 0.110217676}
   m_Center: {x: -0.005914118, y: 0.16071634, z: 0.02108941}
---- !u!114 &9083167814212763611
+--- !u!114 &-8158153862903732019
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -115,11 +115,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 3158780519640244886}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1825f86dea544914296c3a790cca8549, type: 3}
+  m_Script: {fileID: 11500000, guid: 8bab058eff897f14bb3f37454775989b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  toughnessLevel: 1
-  fracturedPrefab: {fileID: 0}
   dustEffectPrefab: {fileID: 0}
-  floatingTextPrefab: {fileID: 7755895783338873990, guid: 031f0118b78997e4faffa507c7c71815,
-    type: 3}

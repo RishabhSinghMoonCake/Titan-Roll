@@ -35,6 +35,7 @@ public class LaunchSequenceManager : MonoBehaviour
     public HandTutorial handTutorialUI;
     public TextMeshProUGUI powerPercentageText;
     public TextMeshProUGUI tapToPlayText;
+    public TextMeshProUGUI LevelText;
 
     [Header("Phase Settings")]
     public GameObject upgradePanel;
@@ -74,6 +75,24 @@ public class LaunchSequenceManager : MonoBehaviour
             tapToPlayText.transform.DOKill();
             tapToPlayText.transform.localScale = Vector3.one;
             tapToPlayText.gameObject.SetActive(true);
+        }
+
+        // --- NEW: LEVEL TEXT FADE IN ---
+        if (LevelText != null)
+        {
+            int currentLevel = PlayerPrefs.GetInt("PrestigeLevel", 1);
+            LevelText.text = $"LEVEL {currentLevel}";
+            LevelText.gameObject.SetActive(true);
+
+            // Reset state instantly before animating
+            LevelText.transform.DOKill();
+            LevelText.DOKill();
+            LevelText.color = new Color(LevelText.color.r, LevelText.color.g, LevelText.color.b, 0f);
+            LevelText.transform.localScale = Vector3.one * 0.5f;
+
+            // Pop in and fade up
+            LevelText.DOFade(1f, 0.4f);
+            LevelText.transform.DOScale(1f, 0.4f).SetEase(Ease.OutBack);
         }
 
         StopAllCoroutines();
@@ -127,6 +146,16 @@ public class LaunchSequenceManager : MonoBehaviour
             tapToPlayText.transform.DOScale(Vector3.zero, 0.25f)
                 .SetEase(Ease.InBack)
                 .OnComplete(() => tapToPlayText.gameObject.SetActive(false));
+        }
+
+        // --- NEW: FADE OUT LEVEL TEXT ON TAP ---
+        if (LevelText != null && LevelText.gameObject.activeSelf)
+        {
+            LevelText.transform.DOKill();
+            LevelText.DOFade(0f, 0.2f); // Quick fade
+            LevelText.transform.DOScale(Vector3.zero, 0.25f)
+                .SetEase(Ease.InBack)
+                .OnComplete(() => LevelText.gameObject.SetActive(false));
         }
 
 

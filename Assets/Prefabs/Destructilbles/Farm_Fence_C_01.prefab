@@ -99,9 +99,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1825f86dea544914296c3a790cca8549, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  toughnessLevel: 6
+  targetMassLevel: 3
+  maxDamagePenalty: 0.5
   fracturedPrefab: {fileID: 0}
-  dustEffectPrefab: {fileID: 0}
+  dustEffectPrefab: {fileID: 1272483159307946, guid: cc0bdc9defd87ef4fba2c3954f1bb0d1,
+    type: 3}
 --- !u!65 &4323819496577841789
 BoxCollider:
   m_ObjectHideFlags: 0

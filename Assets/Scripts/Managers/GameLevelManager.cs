@@ -108,6 +108,14 @@ public class GameLevelManager : MonoBehaviour
             boulderZoomFramer.SetTarget(arcadeBoulder.transform);
         }
 
+        int currentLevel = PlayerPrefs.GetInt("PrestigeLevel", 1);
+        if (launchSequenceManager != null && launchSequenceManager.LevelText != null)
+        {
+            launchSequenceManager.LevelText.text = $"LEVEL {currentLevel}";
+        }
+
+
+
         UpdateBoulderVisualsAndStats();
         UpdateUI();
     }
@@ -571,6 +579,72 @@ public class GameLevelManager : MonoBehaviour
         // 3. Reset the scene
         yield return new WaitForSeconds(1f);
         SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+    }
+
+    public void TriggerPrestigeWin()
+    {
+        StartCoroutine(PrestigeWinRoutine());
+    }
+
+    private IEnumerator PrestigeWinRoutine()
+    {
+        currentState = GameState.Idle;
+        int currentLevel = PlayerPrefs.GetInt("PrestigeLevel", 1);
+
+        // --- 1. THE CINEMATIC CAMERA TRICK ---
+        // Find your LaunchSequenceManager to access the Cinemachine cameras
+        LaunchSequenceManager launchManager = FindObjectOfType<LaunchSequenceManager>();
+
+        if (launchManager != null && launchManager.vcamFollow != null)
+        {
+            // Remove the Follow target so the camera completely freezes its position in the world
+            launchManager.vcamFollow.Follow = null;
+
+            // Ensure LookAt is still pointing at the boulder so the camera swivels to watch it leave
+            if (arcadeBoulder != null)
+            {
+                launchManager.vcamFollow.LookAt = arcadeBoulder.transform;
+            }
+        }
+
+        // If you are also using a custom script like DynamicBoulderCamera to handle movement, disable it here
+        DynamicBoulderCamera customCam = FindObjectOfType<DynamicBoulderCamera>();
+        if (customCam != null) customCam.enabled = false;
+
+        // 2. Let the player watch the boulder roll away for 3.5 seconds
+        yield return new WaitForSeconds(3.5f);
+
+        // 3. Stop looking right before the UI pops up (so the camera stops turning)
+        if (launchManager != null && launchManager.vcamFollow != null)
+        {
+            launchManager.vcamFollow.LookAt = null;
+        }
+
+        // 4. Calculate Prestige Data & Wipe Save
+        int nextLevel = currentLevel + 1;
+        PlayerPrefs.SetInt("PrestigeLevel", nextLevel);
+        PlayerPrefs.Save();
+
+        int startingGoldBonus = 5000 * currentLevel;
+
+        if (PlayerDataManager.Instance != null)
+        {
+            PlayerDataManager.Instance.data.gold = startingGoldBonus;
+            PlayerDataManager.Instance.data.massLevel = 1;
+            PlayerDataManager.Instance.data.strengthLevel = 1;
+            PlayerDataManager.Instance.data.bestDistance = 0;
+            // Add any other resets here
+            PlayerDataManager.Instance.Save();
+        }
+
+        // 5. Trigger the Game Over UI Screen
+        if (gameOverPanel != null) gameOverPanel.SetActive(true);
+        if (continueButton != null) continueButton.interactable = true;
+
+        if (gameOverTallyText != null) gameOverTallyText.text = "PRESTIGE RANK UP!";
+        if (currentRunText != null) currentRunText.text = $"LEVEL {currentLevel} CLEARED!";
+        if (bestRunText != null) bestRunText.text = $"Next Level: {nextLevel}";
+        if (totalGoldText != null) totalGoldText.text = $"Bonus: +{startingGoldBonus}";
     }
 
     private void OnDestroy()

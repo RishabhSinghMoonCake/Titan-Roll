@@ -3,8 +3,8 @@ using System.Collections;
 
 public class DebrisFader : MonoBehaviour
 {
-    public float lifeTime = 3.0f;
-    public float fadeDuration = 1.5f;
+    private float lifeTime = 1.5f;
+    private float fadeDuration = 1f;
 
     // Called manually by Destructible after spawning
     public void BeginFade()

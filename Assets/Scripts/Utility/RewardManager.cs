@@ -79,9 +79,49 @@ public class RewardManager : MonoBehaviour
         _accumulatedRunGold = 0f;
     }
 
-    private float GetIncomeMultiplier()
+    [Header("Income Progression")]
+    [Tooltip("Define exact multipliers. Index 0 = Level 1, Index 1 = Level 2, etc.")]
+    public float[] incomeMultiplierSteps = new float[]
     {
-        if (PlayerDataManager.Instance == null) return 1f;
-        return 1.0f + ((PlayerDataManager.Instance.data.greedLevel - 1) * 0.1f);
+        1.0f, // Level 1 (Base)
+        1.1f, // Level 2 (+0.1)
+        1.2f, // Level 3 (+0.1)
+        1.3f, // Level 4 
+        1.6f, // Level 5 
+        1.9f, // Level 6
+        2.2f, // Level 7 
+        2.5f, // Level 8
+        2.7f, // Level 9
+        3.0f,
+        3.5f,
+        4f,
+        5f,
+        7.5f,
+        10f,
+        10f,
+        10f,
+        10f
+    };
+
+    public float GetIncomeMultiplier()
+    {
+        if(PlayerDataManager.Instance == null) return 1.0f;
+        int index = PlayerDataManager.Instance.data.greedLevel - 1; // Arrays start at 0, levels start at 1
+
+        if (index < 0) return 1.0f;
+
+        // If the array has the specific level defined, return it exactly.
+        if (index < incomeMultiplierSteps.Length)
+        {
+            return incomeMultiplierSteps[index];
+        }
+        else
+        {
+            // INFINITE FALLBACK: If they level past 10, keep adding 0.5 per level automatically
+            float lastDefinedValue = incomeMultiplierSteps[incomeMultiplierSteps.Length - 1];
+            int extraLevels = index - (incomeMultiplierSteps.Length - 1);
+
+            return lastDefinedValue + (extraLevels * 0.5f);
+        }
     }
 }

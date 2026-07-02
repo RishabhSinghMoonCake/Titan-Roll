@@ -10,18 +10,33 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: -8679921383154817045, guid: 9aaa633ac03087647bd6b35cac30456c,
         type: 3}
+      propertyPath: m_LocalScale.x
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 9aaa633ac03087647bd6b35cac30456c,
+        type: 3}
+      propertyPath: m_LocalScale.y
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 9aaa633ac03087647bd6b35cac30456c,
+        type: 3}
+      propertyPath: m_LocalScale.z
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 9aaa633ac03087647bd6b35cac30456c,
+        type: 3}
       propertyPath: m_LocalPosition.x
-      value: 0
+      value: -98.14758
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 9aaa633ac03087647bd6b35cac30456c,
         type: 3}
       propertyPath: m_LocalPosition.y
-      value: 0
+      value: 1.0374918
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 9aaa633ac03087647bd6b35cac30456c,
         type: 3}
       propertyPath: m_LocalPosition.z
-      value: 0
+      value: 1002.3494
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 9aaa633ac03087647bd6b35cac30456c,
         type: 3}
@@ -58,13 +73,54 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 9aaa633ac03087647bd6b35cac30456c,
+        type: 3}
+      propertyPath: m_ConstrainProportionsScale
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 919132149155446097, guid: 9aaa633ac03087647bd6b35cac30456c,
         type: 3}
       propertyPath: m_Name
       value: Rocks_1
       objectReference: {fileID: 0}
+    - target: {fileID: 3451118302482216456, guid: 9aaa633ac03087647bd6b35cac30456c,
+        type: 3}
+      propertyPath: m_Convex
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 3451118302482216456, guid: 9aaa633ac03087647bd6b35cac30456c,
+        type: 3}
+      propertyPath: m_IsTrigger
+      value: 1
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 9aaa633ac03087647bd6b35cac30456c,
+        type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 3850126987303079470}
   m_SourcePrefab: {fileID: 100100000, guid: 9aaa633ac03087647bd6b35cac30456c, type: 3}
+--- !u!1 &5181226034006364807 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: 9aaa633ac03087647bd6b35cac30456c,
+    type: 3}
+  m_PrefabInstance: {fileID: 5415016089672855510}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &3850126987303079470
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5181226034006364807}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1825f86dea544914296c3a790cca8549, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  targetMassLevel: 20
+  maxDamagePenalty: 1
+  fracturedPrefab: {fileID: 0}
+  dustEffectPrefab: {fileID: 0}

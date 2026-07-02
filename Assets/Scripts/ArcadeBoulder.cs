@@ -33,6 +33,23 @@ public class ArcadeBoulder : MonoBehaviour
     [Range(0.1f, 0.5f)]
     public float brakingZonePercentage = 0.25f;
     public float maxBrakeForce = 25f;
+    [Tooltip("How much of the speed damage actually applies to stamina. (e.g., 0.5 = a 30% hit only drains 15% stamina)")]
+    [Range(0f, 1f)]
+    public float staminaImpactMitigation = 0.35f;
+
+    [Header("Speed Lines Effect")]
+    public ParticleSystem speedLinesParticle;
+    [Tooltip("Speed (km/h) where the lines start appearing.")]
+    public float speedLineThresholdKmh = 60f;
+    [Tooltip("Speed (km/h) where the lines reach maximum stretch/intensity.")]
+    public float speedLineMaxKmh = 150f;
+
+    [Tooltip("The normal Z position when resting or going slow.")]
+    public float speedLineBaseZ = 4f;
+    [Tooltip("How far forward on the Z-axis it pushes when at max speed.")]
+    public float speedLineMaxZ = 12f;
+    [Tooltip("How smoothly the particle system slides back and forth.")]
+    public float speedLineSmoothSpeed = 10f;
 
     private Rigidbody rb;
     private bool isLaunched = false;
@@ -62,6 +79,10 @@ public class ArcadeBoulder : MonoBehaviour
     public float visualRollSpeedMultiplier = 50f;
     [Tooltip("Speed at which the visual container snaps its up-axis to the ground normal.")]
     public float visualNormalSnapSpeed = 12f;
+
+    [Header("Prestige Settings")]
+    public float finishLineDistance = 2500f;
+    private bool _hasCrossedFinishLine = false;
 
     private float _startZ;
     private int _lastDisplayedDistance = -1;
@@ -98,15 +119,21 @@ public class ArcadeBoulder : MonoBehaviour
 
     public void ApplyUpgrades(int massLevel)
     {
-        float t = Mathf.Clamp01((massLevel - 1) / 19f);
-        float sCurve = Mathf.SmoothStep(0f, 1f, t);
+        float t = (massLevel - 1) / 19f;
 
-        staminaDrainMultiplier = Mathf.Lerp(1f, 0.5f, sCurve);
-        momentumRecoveryForce = Mathf.Lerp(10f, 25f, sCurve);
+        // 1. Stamina Drain (Asymptote curve)
+        // Starts at 1.0. At level 20 (t=1), it hits 0.2. 
+        // We use Mathf.Max to ensure the drain never goes below 5% (0.05f), preventing infinite stamina.
+        staminaDrainMultiplier = Mathf.Max(0.05f, 1f - (0.7f * t));
+
+        // 2. Momentum Recovery (Infinite Linear Scaling)
+        // Starts at 10. At level 20 (t=1), it hits 25. At level 40 (t=2), it hits 40.
+        momentumRecoveryForce = 10f + (15f * t);
     }
 
     public void Launch(float launchSpeedKmh, float powerPercentage = 1f)
     {
+        _hasCrossedFinishLine = false;
         isLaunched = true;
         timeSinceLaunch = 0f;
         stuckTimer = 0f;
@@ -166,6 +193,12 @@ public class ArcadeBoulder : MonoBehaviour
             float currentDistance = transform.position.z - _startZ;
             if (currentDistance < 0) currentDistance = 0;
 
+            if (currentDistance >= finishLineDistance && !_hasCrossedFinishLine)
+            {
+                _hasCrossedFinishLine = true;
+                GameLevelManager.Instance.TriggerPrestigeWin();
+            }
+
             int currentDistanceInt = Mathf.FloorToInt(currentDistance);
 
             if (currentDistanceInt > _lastDisplayedDistance)
@@ -185,6 +218,37 @@ public class ArcadeBoulder : MonoBehaviour
 
             // 3. Update the text (added " km/h" back in to match your Launch method)
             speedDisplay.text = $"{Mathf.FloorToInt(_displayedSpeed)}";
+        }
+
+
+        if (speedLinesParticle != null)
+        {
+            float currentKmh = rb.velocity.magnitude * 3.6f;
+
+            // 1. Calculate intensity (0.0 at threshold, 1.0 at max speed)
+            float speedRatio = Mathf.InverseLerp(speedLineThresholdKmh, speedLineMaxKmh, currentKmh);
+
+            if (currentKmh >= speedLineThresholdKmh)
+            {
+                // Turn on if it's off
+                if (!speedLinesParticle.isPlaying) speedLinesParticle.Play();
+
+                // Smoothly push Z forward based on speed ratio
+                float targetZ = Mathf.Lerp(speedLineBaseZ, speedLineMaxZ, speedRatio);
+                Vector3 localPos = speedLinesParticle.transform.localPosition;
+                localPos.z = Mathf.Lerp(localPos.z, targetZ, Time.deltaTime * speedLineSmoothSpeed);
+                speedLinesParticle.transform.localPosition = localPos;
+            }
+            else
+            {
+                // Turn off if we are going too slow
+                if (speedLinesParticle.isPlaying) speedLinesParticle.Stop();
+
+                // Smoothly retract Z back to base (+4) so it's ready for the next burst
+                Vector3 localPos = speedLinesParticle.transform.localPosition;
+                localPos.z = Mathf.Lerp(localPos.z, speedLineBaseZ, Time.deltaTime * speedLineSmoothSpeed);
+                speedLinesParticle.transform.localPosition = localPos;
+            }
         }
     }
 
@@ -360,7 +424,6 @@ public class ArcadeBoulder : MonoBehaviour
         rb.isKinematic = true;
         HideDistanceDisplay();
 
-        Debug.Log("ArcadeBoulder: Run Finished smoothly.");
         OnRunFinished?.Invoke();
     }
 
@@ -375,7 +438,7 @@ public class ArcadeBoulder : MonoBehaviour
 
         rb.velocity = rb.velocity.normalized * (newSpeedKmh / 3.6f);
 
-        float staminaPenalty = currentStamina * damagePercentage;
+        float staminaPenalty = currentStamina * (damagePercentage * staminaImpactMitigation);
         currentStamina -= staminaPenalty;
         if (currentStamina < 0) currentStamina = 0;
 
@@ -398,7 +461,6 @@ public class ArcadeBoulder : MonoBehaviour
             StartCoroutine(HitStopRoutine(damagePercentage));
         }
 
-        Debug.Log($"<color=orange>[IMPACT]</color> Damage: {damagePercentage * 100f:F1}% | Speed: {newSpeedKmh:F0} km/h");
     }
 
     private System.Collections.IEnumerator HitStopRoutine(float damagePercentage)
@@ -417,7 +479,6 @@ public class ArcadeBoulder : MonoBehaviour
         isLaunched = false;
         HideDistanceDisplay();
 
-        Debug.Log("ArcadeBoulder: BONK! Hit a solid wall.");
         OnRunFinished?.Invoke();
     }
 

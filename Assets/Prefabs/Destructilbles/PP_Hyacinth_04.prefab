@@ -12,7 +12,7 @@ GameObject:
   - component: {fileID: 3935466770795165842}
   - component: {fileID: 27318893370932139}
   - component: {fileID: 4772223939424639575}
-  - component: {fileID: -8542152613008580544}
+  - component: {fileID: 3202627263871809346}
   m_Layer: 8
   m_Name: PP_Hyacinth_04
   m_TagString: Untagged
@@ -106,7 +106,7 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 0.101249784, y: 0.3521309, z: 0.11841632}
   m_Center: {x: -0.013534112, y: 0.17319885, z: -0.006321717}
---- !u!114 &-8542152613008580544
+--- !u!114 &3202627263871809346
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -115,11 +115,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 2739730466585426036}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1825f86dea544914296c3a790cca8549, type: 3}
+  m_Script: {fileID: 11500000, guid: 8bab058eff897f14bb3f37454775989b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  toughnessLevel: 1
-  fracturedPrefab: {fileID: 0}
   dustEffectPrefab: {fileID: 0}
-  floatingTextPrefab: {fileID: 7755895783338873990, guid: 031f0118b78997e4faffa507c7c71815,
-    type: 3}

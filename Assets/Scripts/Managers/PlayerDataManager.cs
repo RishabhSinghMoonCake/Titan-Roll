@@ -48,7 +48,7 @@ public class PlayerDataManager : MonoBehaviour
     public void AddGold(int gold)
     {
         data.gold += gold;
-        data.gold = 999999999;
+        data.gold = 99999999999;
         Save();
     }
 
