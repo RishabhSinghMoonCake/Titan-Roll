@@ -87,7 +87,6 @@ public class HighValueTarget : MonoBehaviour
                 RewardManager.Instance.ProcessDestructionReward(rewardGold, transform.position.z);
             }
 
-            // Note: Make sure BoulderComboText handles the AddGold logic if you are keeping this!
             if (BoulderComboText.Instance != null)
             {
                 BoulderComboText.Instance.AddGold(rewardGold);
@@ -112,14 +111,9 @@ public class HighValueTarget : MonoBehaviour
             }
         }
 
-        if (transform.parent != null)
-        {
-            Destroy(transform.parent.gameObject);
-        }
-        else
-        {
-            Destroy(gameObject);
-        }
+        // THE FIX: Removed transform.parent destruction entirely.
+        // It now strictly destroys ONLY this target object!
+        Destroy(gameObject);
     }
 
     public void DebugResetTarget()

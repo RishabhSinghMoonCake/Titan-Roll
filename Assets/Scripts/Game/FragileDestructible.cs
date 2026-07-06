@@ -15,8 +15,6 @@ public class FragileDestructible : MonoBehaviour
         {
             _isBroken = true;
 
-            // Debug the percentage to the console
-            Debug.Log($"[FragileDestructible] {gameObject.name} crushed! Damage Penalty: 0%");
 
             // Play the dust poof effect
             if (dustEffectPrefab != null)

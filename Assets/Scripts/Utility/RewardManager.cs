@@ -93,14 +93,14 @@ public class RewardManager : MonoBehaviour
         2.5f, // Level 8
         2.7f, // Level 9
         3.0f,
+        3.25f,
         3.5f,
+        3.75f,
         4f,
-        5f,
-        7.5f,
-        10f,
-        10f,
-        10f,
-        10f
+        4.25f,
+        4.5f,
+        4.75f,
+        5f
     };
 
     public float GetIncomeMultiplier()

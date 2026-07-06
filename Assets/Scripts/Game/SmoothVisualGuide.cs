@@ -55,12 +55,12 @@ public class SmoothVisualGlide : MonoBehaviour
             return;
         }
 
-        transform.position = physicsProxy.position ;
+        transform.position = physicsProxy.position;
         transform.rotation = physicsProxy.rotation;
 
         _lastPosition = transform.position;
         _targetY = physicsProxy.position.y;
-        _targetHorizontalPos = new Vector3(physicsProxy.position.x , 0f, physicsProxy.position.z);
+        _targetHorizontalPos = new Vector3(physicsProxy.position.x, 0f, physicsProxy.position.z);
         _targetRotation = physicsProxy.rotation;
     }
 
@@ -105,13 +105,23 @@ public class SmoothVisualGlide : MonoBehaviour
                 horizontalT);
 
         // --- VERTICAL BUMP REJECTION ---
-        if (Mathf.Abs(proxyPosWithOffset.y - _targetY) > verticalDeadzone)
+        // If the boulder is falling through the air, bypass the deadzone freeze completely to prevent stair-step jitter!
+        if (physicsProxy.velocity.y < -0.1f)
         {
             _targetY = proxyPosWithOffset.y;
         }
+        else
+        {
+            float verticalDelta = proxyPosWithOffset.y - _targetY;
+            if (Mathf.Abs(verticalDelta) > verticalDeadzone)
+            {
+                // Smooth window-shifting for ground bumps to prevent hard snapping
+                _targetY = proxyPosWithOffset.y - (Mathf.Sign(verticalDelta) * verticalDeadzone);
+            }
+        }
 
         // Prevent dropping below the actual physical position 
-        float absoluteFloorY = physicsProxy.position.y ;
+        float absoluteFloorY = physicsProxy.position.y;
         if (_targetY < absoluteFloorY)
         {
             _targetY = absoluteFloorY;

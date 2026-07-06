@@ -612,15 +612,14 @@ public class GameLevelManager : MonoBehaviour
         if (customCam != null) customCam.enabled = false;
 
         // 2. Let the player watch the boulder roll away for 3.5 seconds
+        // 1. Let the player watch the boulder roll away for 3.5 seconds
         yield return new WaitForSeconds(3.5f);
 
-        // 3. Stop looking right before the UI pops up (so the camera stops turning)
-        if (launchManager != null && launchManager.vcamFollow != null)
-        {
-            launchManager.vcamFollow.LookAt = null;
-        }
+        // 2. TRIGGER YOUR EXISTING NORMAL GAME OVER SYSTEM!
+        // This will fire your built-in cleanup: hiding the ball, fading out the distance/speed HUD, and opening the Game Over panel.
+        StartEndRunSequence(); // (Or whatever your normal game over method is named in GameLevelManager)
 
-        // 4. Calculate Prestige Data & Wipe Save
+        // 3. Calculate Prestige Data & Wipe Save
         int nextLevel = currentLevel + 1;
         PlayerPrefs.SetInt("PrestigeLevel", nextLevel);
         PlayerPrefs.Save();
@@ -633,14 +632,11 @@ public class GameLevelManager : MonoBehaviour
             PlayerDataManager.Instance.data.massLevel = 1;
             PlayerDataManager.Instance.data.strengthLevel = 1;
             PlayerDataManager.Instance.data.bestDistance = 0;
-            // Add any other resets here
             PlayerDataManager.Instance.Save();
         }
 
-        // 5. Trigger the Game Over UI Screen
-        if (gameOverPanel != null) gameOverPanel.SetActive(true);
-        if (continueButton != null) continueButton.interactable = true;
-
+        // 4. OVERRIDE THE TEXT LABELS
+        // Since your normal Game Over just opened the panel, we simply override the text to show the Prestige rewards instead!
         if (gameOverTallyText != null) gameOverTallyText.text = "PRESTIGE RANK UP!";
         if (currentRunText != null) currentRunText.text = $"LEVEL {currentLevel} CLEARED!";
         if (bestRunText != null) bestRunText.text = $"Next Level: {nextLevel}";

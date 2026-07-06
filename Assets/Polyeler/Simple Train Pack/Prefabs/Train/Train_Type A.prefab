@@ -323,7 +323,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   targetMassLevel: 10
-  maxDamagePenalty: 0.4
+  maxDamagePenalty: 0.8
   fracturedPrefab: {fileID: 0}
   dustEffectPrefab: {fileID: 1952076019714368, guid: d42852d7985301b42a647ff270d3d088,
     type: 3}
@@ -1464,7 +1464,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   targetMassLevel: 10
-  maxDamagePenalty: 0.4
+  maxDamagePenalty: 0.8
   fracturedPrefab: {fileID: 0}
   dustEffectPrefab: {fileID: 1952076019714368, guid: d42852d7985301b42a647ff270d3d088,
     type: 3}
@@ -2424,7 +2424,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   targetMassLevel: 10
-  maxDamagePenalty: 0.4
+  maxDamagePenalty: 0.8
   fracturedPrefab: {fileID: 0}
   dustEffectPrefab: {fileID: 1952076019714368, guid: d42852d7985301b42a647ff270d3d088,
     type: 3}
@@ -2798,7 +2798,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   targetMassLevel: 10
-  maxDamagePenalty: 0.4
+  maxDamagePenalty: 0.8
   fracturedPrefab: {fileID: 0}
   dustEffectPrefab: {fileID: 1952076019714368, guid: d42852d7985301b42a647ff270d3d088,
     type: 3}
@@ -3440,7 +3440,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   targetMassLevel: 10
-  maxDamagePenalty: 0.4
+  maxDamagePenalty: 0.8
   fracturedPrefab: {fileID: 0}
   dustEffectPrefab: {fileID: 1952076019714368, guid: d42852d7985301b42a647ff270d3d088,
     type: 3}
@@ -4149,7 +4149,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   targetMassLevel: 10
-  maxDamagePenalty: 0.4
+  maxDamagePenalty: 0.8
   fracturedPrefab: {fileID: 0}
   dustEffectPrefab: {fileID: 1952076019714368, guid: d42852d7985301b42a647ff270d3d088,
     type: 3}

@@ -46,6 +46,7 @@ public class InputManager : MonoBehaviour
     private Finger _activeFinger;
     private bool _isJoystickVisible = false;
 
+    private bool _hasDraggedThisTouch = false;
     void Awake()
     {
         if (Instance == null) Instance = this;
@@ -113,66 +114,80 @@ public class InputManager : MonoBehaviour
 
     private void HandleFingerDown(Finger finger)
     {
-        if (_isInteracting) return;
-        if (IsPointerOverUI(finger.screenPosition)) return;
+        if (_isInteracting) return;  
+        if (IsPointerOverUI(finger.screenPosition)) return;  
 
-        _isInteracting = true;
-        _activeFinger = finger;
-        _joystickCenter = finger.screenPosition;
-        _targetSteering = 0f;
+        _isInteracting = true;  
+        _activeFinger = finger;  
+        _joystickCenter = finger.screenPosition;  
+        _targetSteering = 0f;  
+        _hasDraggedThisTouch = false; // Reset drag flag on touch down
 
-        // Only show visually if the game has started (boulder is rolling)
-        if (IsBoulderPlayable())
+        // Only show visually if the game has started (boulder is rolling) 
+        if (IsBoulderPlayable())  
         {
-            ShowJoystick(_joystickCenter);
+            ShowJoystick(_joystickCenter);  
         }
 
-        OnLaunchTap?.Invoke();
     }
 
     private void HandleFingerMove(Finger finger)
     {
-        if (!_isInteracting || finger != _activeFinger) return;
+        if (!_isInteracting || finger != _activeFinger) return;  
 
-        float deltaX = finger.screenPosition.x - _joystickCenter.x;
+        float deltaX = finger.screenPosition.x - _joystickCenter.x;  
 
         // --- THE FLOATING ANCHOR FIX ---
-        if (Mathf.Abs(deltaX) > joystickRadius)
+        if (Mathf.Abs(deltaX) > joystickRadius)  
         {
-            _joystickCenter.x = finger.screenPosition.x - (Mathf.Sign(deltaX) * joystickRadius);
-            deltaX = Mathf.Sign(deltaX) * joystickRadius;
+            _joystickCenter.x = finger.screenPosition.x - (Mathf.Sign(deltaX) * joystickRadius);  
+            deltaX = Mathf.Sign(deltaX) * joystickRadius;  
         }
 
-        float sensitivity = invertSteering ? -1f : 1f;
-        float safeRadius = Mathf.Max(joystickRadius, 1f);
-        float rawSteer = (deltaX / safeRadius) * sensitivity;
+        float sensitivity = invertSteering ? -1f : 1f;  
+        float safeRadius = Mathf.Max(joystickRadius, 1f);  
+        float rawSteer = (deltaX / safeRadius) * sensitivity;  
 
-        _targetSteering = Mathf.Clamp(rawSteer, -1f, 1f);
+        _targetSteering = Mathf.Clamp(rawSteer, -1f, 1f);  
+
+        // --- STRICT DRAG DETECTION ---
+        // If the finger moves more than 15 pixels in ANY direction, count it as a drag, not a tap!
+        if (Vector2.Distance(finger.screenPosition, _joystickCenter) > 15f)
+        {
+            _hasDraggedThisTouch = true;
+        }
 
         // --- UPDATE VISUALS ---
-        if (_isJoystickVisible && joystickCanvasGroup != null)
+        if (_isJoystickVisible && joystickCanvasGroup != null)  
         {
-            outerCircle.position = _joystickCenter;
+            outerCircle.position = _joystickCenter;  
 
-            // Allow the inner knob to visually drag in 2D space, clamped to the travel radius
-            Vector2 visualDelta = finger.screenPosition - _joystickCenter;
-            if (visualDelta.magnitude > knobTravelRadius)
+            // Allow the inner knob to visually drag in 2D space, clamped to the travel radius 
+            Vector2 visualDelta = finger.screenPosition - _joystickCenter;  
+            if (visualDelta.magnitude > knobTravelRadius)  
             {
-                visualDelta = visualDelta.normalized * knobTravelRadius;
+                visualDelta = visualDelta.normalized * knobTravelRadius;  
             }
-            innerKnob.position = _joystickCenter + visualDelta;
+            innerKnob.position = _joystickCenter + visualDelta;  
         }
     }
 
     private void HandleFingerUp(Finger finger)
     {
-        if (!_isInteracting || finger != _activeFinger) return;
+        if (!_isInteracting || finger != _activeFinger) return;  
 
-        _isInteracting = false;
-        _activeFinger = null;
-        _targetSteering = 0f;
+        // --- STRICT TAP FIRED HERE ---
+        // Only trigger a tap if they lifted their finger without dragging!
+        if (!_hasDraggedThisTouch)
+        {
+            OnLaunchTap?.Invoke();
+        }
 
-        HideJoystick();
+        _isInteracting = false;  
+        _activeFinger = null;  
+        _targetSteering = 0f;  
+
+        HideJoystick();  
     }
 
     // --- VISUAL & STATE HELPERS ---

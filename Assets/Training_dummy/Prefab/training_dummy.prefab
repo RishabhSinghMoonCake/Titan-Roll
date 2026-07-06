@@ -165,7 +165,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   targetMassLevel: 5
-  maxDamagePenalty: 0.2
+  maxDamagePenalty: 0.6
   fracturedPrefab: {fileID: 0}
   dustEffectPrefab: {fileID: 0}
 --- !u!54 &4372739252043124210

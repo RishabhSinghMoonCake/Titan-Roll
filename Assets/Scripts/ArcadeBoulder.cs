@@ -35,7 +35,7 @@ public class ArcadeBoulder : MonoBehaviour
     public float maxBrakeForce = 25f;
     [Tooltip("How much of the speed damage actually applies to stamina. (e.g., 0.5 = a 30% hit only drains 15% stamina)")]
     [Range(0f, 1f)]
-    public float staminaImpactMitigation = 0.35f;
+    public float staminaImpactMitigation = 0.5f;
 
     [Header("Speed Lines Effect")]
     public ParticleSystem speedLinesParticle;
@@ -66,6 +66,11 @@ public class ArcadeBoulder : MonoBehaviour
     [SerializeField] private TextMeshProUGUI distanceDisplay;
     [SerializeField] private TextMeshProUGUI speedDisplay;
     [SerializeField] private TextMeshProUGUI kmhText;
+    [SerializeField] private DistanceVisualizerUI distanceVisualizer;
+
+    [Header("Arcade Floating Text")]
+    [Tooltip("Drag your FloatingText prefab here.")]
+    public GameObject floatingTextPrefab;
 
     [Tooltip("How fast the speedometer text catches up to the actual speed.")]
     public float speedUIDampening = 5f;
@@ -181,6 +186,11 @@ public class ArcadeBoulder : MonoBehaviour
             kmhText.color = Color.white;
             kmhText.DOFade(1f, 0.5f);
         }
+
+        if (distanceVisualizer != null)
+        {
+            distanceVisualizer.ShowVisualizer();
+        }
     }
 
     private void Update()
@@ -205,6 +215,11 @@ public class ArcadeBoulder : MonoBehaviour
             {
                 _lastDisplayedDistance = currentDistanceInt;
                 UpdateDistanceUI(currentDistanceInt);
+            }
+
+            if (distanceVisualizer != null)
+            {
+                distanceVisualizer.UpdateVisualizer(currentDistance);
             }
         }
 
@@ -254,9 +269,9 @@ public class ArcadeBoulder : MonoBehaviour
 
     private void UpdateDistanceUI(int distance)
     {
-        distanceDisplay.text = $"{distance} m";
-        
-       
+        distanceDisplay.SetText($"{distance} m");
+
+
 
         if (distance >= _nextPopDistance)
         {
@@ -432,7 +447,12 @@ public class ArcadeBoulder : MonoBehaviour
     public void ApplyImpactSlowdown(float damagePercentage)
     {
         if (damagePercentage <= 0f) return;
+        if(rb.isKinematic) return;
 
+        if (floatingTextPrefab != null)
+        {
+            StartCoroutine(SpawnDamagePopSequence(damagePercentage));
+        }
         float newSpeedKmh = currentSpeedKmh * (1f - damagePercentage);
         if (newSpeedKmh < 5f) newSpeedKmh = 5f;
 
@@ -455,6 +475,7 @@ public class ArcadeBoulder : MonoBehaviour
                 _impulseSource.GenerateImpulse(shakeForce);
             }
         }
+
 
         if (damagePercentage > 0.15f)
         {
@@ -480,6 +501,80 @@ public class ArcadeBoulder : MonoBehaviour
         HideDistanceDisplay();
 
         OnRunFinished?.Invoke();
+    }
+
+    /// <summary>
+    /// Spawns a 1-2 punch arcade text sequence (e.g., "SMASHED!" followed by "-35% DAMAGE!").
+    /// </summary>
+    private System.Collections.IEnumerator SpawnDamagePopSequence(float damagePercentage)
+    {
+        int dmgPercent = Mathf.RoundToInt(damagePercentage * 100f);
+        if (dmgPercent <= 0) dmgPercent = 1; // Ensure at least 1% displays on minor thuds
+
+        string arcadeWord = "HIT!";
+        Color popColor = new Color(1f, 0.4f, 0f); // Bright Arcade Orange
+
+        // Scale the vocabulary and colors based on how hard they hit the obstacle!
+        if (dmgPercent >= 75)
+        {
+            arcadeWord = "DESTROYED!";
+            popColor = Color.red;
+        }
+        else if (dmgPercent >= 40)
+        {
+            arcadeWord = "SMASHED!";
+            popColor = new Color(1f, 0.1f, 0.1f); // Intense Crimson
+        }
+        else if (dmgPercent >= 20)
+        {
+            arcadeWord = "CRUSHED!";
+            popColor = new Color(1f, 0.3f, 0f); // Red-Orange
+        }
+        else
+        {
+            arcadeWord = "BONK!";
+            popColor = new Color(1f, 0.6f, 0f); // Yellow-Orange
+        }
+
+        // 1. Calculate a base spawn point above the boulder's mesh
+        float boulderRadius = transform.localScale.y * 0.5f;
+        Vector3 baseSpawnPos = transform.position + Vector3.up * (boulderRadius + 2.0f);
+
+        // 2. POP 1: The Arcade Word (Using Rich Text tags to make it thick and bold!)
+        SpawnSingleFloatingText($"<b>{arcadeWord}</b>", popColor, baseSpawnPos);
+
+        // 3. Wait a split second for that sequential rhythm!
+        // We use Realtime so the second pop still fires cleanly even if your hit-stop time freeze is active!
+        yield return new WaitForSecondsRealtime(0.08f);
+
+        // 4. POP 2: The Damage Percentage right above the word
+        Vector3 secondSpawnPos = baseSpawnPos + Vector3.up * 2f;
+        SpawnSingleFloatingText($"<b><size=120%>-{dmgPercent}% DAMAGE!</size></b>", Color.red, secondSpawnPos);
+    }
+
+    private void SpawnSingleFloatingText(string text, Color color, Vector3 spawnPos)
+    {
+        if (floatingTextPrefab == null) return;
+
+        GameObject textObj = null;
+        if (ObjectPooler.Instance != null)
+        {
+            textObj = ObjectPooler.Instance.Spawn(floatingTextPrefab, spawnPos, Quaternion.identity);
+        }
+        else
+        {
+            textObj = Instantiate(floatingTextPrefab, spawnPos, Quaternion.identity);
+        }
+
+        if (textObj != null)
+        {
+            FloatingText floatScript = textObj.GetComponent<FloatingText>();
+            if (floatScript != null)
+            {
+                // THE FIX: Pass 'transform' so the text knows to follow this boulder!
+                floatScript.Setup(text, color, transform);
+            }
+        }
     }
 
     private void HideDistanceDisplay()
@@ -509,6 +604,11 @@ public class ArcadeBoulder : MonoBehaviour
                 kmhText.DOKill();
                 kmhText.DOFade(0f, 0.5f);
             }
+        }
+
+        if (distanceVisualizer != null)
+        {
+            distanceVisualizer.HideVisualizer();
         }
     }
 }
