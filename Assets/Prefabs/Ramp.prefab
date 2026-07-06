@@ -475,5 +475,5 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   boostPercentage: 0.3
   forceRampDirection: 0
-  staminaRestoreAmount: 1
+  staminaRestoreAmount: 0
   boostParticles: {fileID: 0}

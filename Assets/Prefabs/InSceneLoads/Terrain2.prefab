@@ -13670,7 +13670,7 @@ BoxCollider:
     serializedVersion: 2
     m_Bits: 0
   m_LayerOverridePriority: 0
-  m_IsTrigger: 0
+  m_IsTrigger: 1
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
@@ -13689,7 +13689,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   targetMassLevel: 6
-  maxDamagePenalty: 0.6
+  maxDamagePenalty: 1
   fracturedPrefab: {fileID: 0}
   dustEffectPrefab: {fileID: 187952, guid: 841c1fd4e90f9f042a15fa258e9ea984, type: 3}
 --- !u!1001 &8670786885640088915

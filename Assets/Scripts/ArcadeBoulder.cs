@@ -89,6 +89,15 @@ public class ArcadeBoulder : MonoBehaviour
     public float finishLineDistance = 2500f;
     private bool _hasCrossedFinishLine = false;
 
+    [Header("Impact & Destruction Effects")]
+    [Tooltip("Particle to spawn when falling from a height and hitting the ground.")]
+    public GameObject groundImpactParticlePrefab;
+    [Tooltip("Minimum downward vertical velocity required to trigger the hard fall particle.")]
+    public float hardFallVelocityThreshold = -12f;
+
+    [Tooltip("Particle to spawn when the boulder takes 100% damage.")]
+    public GameObject destroyed100PercentParticlePrefab;
+
     private float _startZ;
     private int _lastDisplayedDistance = -1;
     private int _nextPopDistance = 500;
@@ -339,10 +348,18 @@ public class ArcadeBoulder : MonoBehaviour
         // ----------------------------
         float boulderRadius = transform.localScale.y * 0.5f;
         Vector3 currentNormal = Vector3.up;
-
+        float verticalVel = rb.velocity.y;
         // Slightly long raycast to guarantee connection across steep downward drops
         if (Physics.Raycast(transform.position, Vector3.down, out RaycastHit hit, boulderRadius + 2.5f, groundLayer))
         {
+            if (!isGrounded)
+            {
+                // BOULDER JUST LANDED! Check if it was falling fast enough to trigger the dust/crater impact
+                if (verticalVel <= hardFallVelocityThreshold)
+                {
+                    SpawnScaledEffect(groundImpactParticlePrefab, hit.point);
+                }
+            }
             isGrounded = true;
             _smoothedNormal = Vector3.Slerp(_smoothedNormal, hit.normal, Time.fixedDeltaTime * normalSmoothSpeed);
             currentNormal = _smoothedNormal;
@@ -448,6 +465,19 @@ public class ArcadeBoulder : MonoBehaviour
     {
         if (damagePercentage <= 0f) return;
         if(rb.isKinematic) return;
+
+        if (damagePercentage >= 0.99f)
+        {
+            float radius = transform.localScale.y * 0.5f;
+
+            // Get the direction we are moving, default to forward if stationary
+            Vector3 moveDir = rb.velocity.sqrMagnitude > 0.1f ? rb.velocity.normalized : Vector3.forward;
+
+            // Spawn the effect slightly in front of the boulder where the impact occurred
+            Vector3 spawnPos = transform.position + (moveDir * radius);
+
+            SpawnScaledEffect(destroyed100PercentParticlePrefab, spawnPos);
+        }
 
         if (floatingTextPrefab != null)
         {
@@ -574,6 +604,27 @@ public class ArcadeBoulder : MonoBehaviour
                 // THE FIX: Pass 'transform' so the text knows to follow this boulder!
                 floatScript.Setup(text, color, transform);
             }
+        }
+    }
+
+    private void SpawnScaledEffect(GameObject prefab, Vector3 position)
+    {
+        if (prefab == null) return;
+
+        GameObject effectObj = null;
+        if (ObjectPooler.Instance != null)
+        {
+            effectObj = ObjectPooler.Instance.Spawn(prefab, position, Quaternion.identity);
+        }
+        else
+        {
+            effectObj = Instantiate(prefab, position, Quaternion.identity);
+        }
+
+        if (effectObj != null)
+        {
+            // Scale the effect exactly to the boulder's current scale
+            effectObj.transform.localScale = transform.localScale;
         }
     }
 

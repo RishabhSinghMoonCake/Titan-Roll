@@ -4,32 +4,22 @@ public class EconomyManager : MonoBehaviour
 {
     public static EconomyManager Instance;
 
-    [Header("Benchmarks (To clear 3km)")]
+    [Header("Benchmarks (Level to clear 3km)")]
     public int benchmarkStrength = 25;
     public int benchmarkMass = 20;
-    public int benchmarkIncome = 10;
+    public int benchmarkIncome = 15;
 
-    [Header("Absolute Limit (God Mode)")]
-    public int absoluteMaxLevel = 50; // The true hard cap
+    [Header("Cost Tuning")]
+    public float baseCost = 50f;
+    public float maxCostTarget = 35000f;
+    [Tooltip("How steeply costs rise after the midpoint. 2.2 = slow start, aggressive end.")]
+    public float costExponent = 2.2f;
 
-    [Header("Cost Curves (0.0 to 1.0)")]
-    [Tooltip("Draw an exponential curve curving UP")]
-    public AnimationCurve costCurve;
-
-    [Header("Cost Boundaries")]
-    public int baseCost = 50;
-    public int maxCostTarget = 35000; // Extrapolated from your 28.7k at L23 data
-
-    [Header("Income Multiplier Curve")]
-    [Tooltip("Draw a curve for the Income upgrade multiplier")]
-    public AnimationCurve incomeCurve;
-    public float maxIncomeMultiplier = 5.0f; // At L10, gold earned is multiplied by 5
-
-    [Header("Distance Reward Curve")]
-    [Tooltip("Maps the base gold earned purely by distance traveled")]
-    public AnimationCurve distanceRewardCurve;
-    public int maxDistance = 3000; // Your target finish line
-    public int maxBaseGoldAtFinish = 1500;
+    [Header("Prestige Inflation (The Steamroll Fix)")]
+    [Tooltip("How aggressively the STARTING cost multiplies per Prestige. Set high (4.0 - 4.5) to fight Greed carryover!")]
+    public float prestigeBaseInflation = 4.2f; // <-- NEW: Strongly inflates early levels!
+    [Tooltip("How aggressively the MID-GAME target multiplies per Prestige. Keep lower than Base to let toughness decrease.")]
+    public float prestigeTargetInflation = 3.2f; // <-- NEW: Keeps late-game achievable!
 
     private void Awake()
     {
@@ -37,41 +27,43 @@ public class EconomyManager : MonoBehaviour
         else Destroy(gameObject);
     }
 
-    // --- 1. CALCULATE UPGRADE COSTS ---
-    public int GetUpgradeCost(int currentLevel, int benchmarkLevel, float customBase = -1)
+    /// <summary>
+    /// Pure mathematical cost calculation with Hybrid Curve and Base Floor Compression.
+    /// </summary>
+    public int GetUpgradeCost(int currentLevel, int benchmarkLevel, float customBase = -1f)
     {
-        if (currentLevel >= absoluteMaxLevel) return 999999;
 
-        // Calculate progress based on the BENCHMARK, not the max.
-        // If currentLevel is 30, and benchmark is 25, 't' becomes 1.2!
-        float t = (float)(currentLevel - 1) / (benchmarkLevel - 1);
+        float startCost = customBase > 0 ? customBase : baseCost;
+        float targetCost = maxCostTarget;
 
-        // Ask the graph what the multiplier should be at time 't'
-        float curveValue = costCurve.Evaluate(t);
+        // 1. Calculate normalized progress against the benchmark (0.0 to 1.0+)
+        float t = Mathf.Max(0f, (float)(currentLevel - 1) / (benchmarkLevel - 1));
 
-        int startCost = customBase > 0 ? (int)customBase : baseCost;
+        // 2. THE HYBRID CURVE BLEND (20% Linear + 80% Exponential)
+        // This completely eliminates the "flat tail" where Levels 1-6 cost almost the same!
+        float linearPart = t * 0.20f;
+        float expoPart = Mathf.Pow(t, costExponent) * 0.80f;
+        float curveValue = linearPart + expoPart;
 
-        // Use LerpUnclamped so the cost can scale smoothly past the maxCostTarget!
-        return Mathf.RoundToInt(Mathf.LerpUnclamped(startCost, maxCostTarget, curveValue));
+        // 3. PRESTIGE BASE FLOOR COMPRESSION
+        // We apply strong inflation to the base floor, and moderate inflation to the target.
+        int prestigeLevel = PlayerPrefs.GetInt("PrestigeLevel", 1);
+        if (prestigeLevel > 1 && Mathf.Approximately(customBase, 50f))
+        {
+            float baseMult = Mathf.Pow(prestigeBaseInflation, prestigeLevel - 1);
+            float targetMult = Mathf.Pow(prestigeTargetInflation, prestigeLevel - 1);
+
+            startCost *= baseMult;
+            targetCost *= targetMult;
+        }
+
+        // 4. Calculate final price (Unclamped so it scales infinitely past the benchmark)
+        float finalCost = startCost + ((targetCost - startCost) * curveValue);
+
+        return Mathf.RoundToInt(finalCost);
     }
 
-    // Update your fetchers to use the benchmarks:
-    public int GetStrengthCost(int lvl) => GetUpgradeCost(lvl, benchmarkStrength, 50);
-    public int GetMassCost(int lvl) => GetUpgradeCost(lvl, benchmarkMass, 50);
-    public int GetIncomeCost(int lvl) => GetUpgradeCost(lvl, benchmarkIncome, 150);
-
-    // --- 2. CALCULATE RUN REWARDS ---
-    public int CalculateRunGold(float distanceTraveled, int currentIncomeLevel)
-    {
-        // 1. Calculate Base Gold from Distance
-        float distT = Mathf.Clamp01(distanceTraveled / maxDistance);
-        float baseGoldCurveValue = distanceRewardCurve.Evaluate(distT);
-        float baseGold = Mathf.Lerp(0, maxBaseGoldAtFinish, baseGoldCurveValue);
-
-        // 2. Apply the Income Upgrade Multiplier
-        float incT = Mathf.Clamp01((float)(currentIncomeLevel - 1) / (absoluteMaxLevel - 1));
-        float incomeMultiplier = Mathf.Lerp(1.0f, maxIncomeMultiplier, incomeCurve.Evaluate(incT));
-
-        return Mathf.RoundToInt(baseGold * incomeMultiplier);
-    }
+    public int GetStrengthCost(int lvl) => GetUpgradeCost(lvl, benchmarkStrength, 50f);
+    public int GetMassCost(int lvl) => GetUpgradeCost(lvl, benchmarkMass, 50f);
+    public int GetIncomeCost(int lvl) => GetUpgradeCost(lvl, benchmarkIncome, 150f);
 }

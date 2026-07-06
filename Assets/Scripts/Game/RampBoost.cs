@@ -58,7 +58,6 @@ public class RampBoost : MonoBehaviour
                     boostParticles.Play();
                 }
 
-                Debug.Log($"<color=cyan>[RAMP BOOST]</color> Speed Increased by {boostPercentage * 100}% (+{speedToAdd:F1} m/s) | Stamina Restored: +{staminaRestoreAmount}");
             }
         }
     }

@@ -514,6 +514,55 @@ public class LaunchSequenceManager : MonoBehaviour
         charRoot.position = new Vector3(charRoot.position.x, charRoot.position.y, z);
     }
 
+    // --- NEW: Caching structures for dynamic camera scaling ---
+    private struct CamDefaultData
+    {
+        public bool isCached;
+        public Vector3 offset;
+        public float distance;
+    }
+    private CamDefaultData _minigameCamData;
+    private CamDefaultData _closeUpCamData;
+
+    /// <summary>
+    /// Scales the minigame and close-up camera distances proportionally to the boulder's physical size.
+    /// </summary>
+    public void UpdateCameraScales(float boulderScale)
+    {
+        ScaleVirtualCamera(vcamMinigame, ref _minigameCamData, boulderScale);
+        ScaleVirtualCamera(vcamBoulderCloseUp, ref _closeUpCamData, boulderScale);
+    }
+
+    private void ScaleVirtualCamera(CinemachineVirtualCamera vcam, ref CamDefaultData data, float scale)
+    {
+        if (vcam == null) return;
+
+        // 1. Automatically cache the original Level 1 defaults the first time this runs
+        if (!data.isCached)
+        {
+            var t = vcam.GetCinemachineComponent<CinemachineTransposer>();
+            if (t != null) data.offset = t.m_FollowOffset;
+
+            var f = vcam.GetCinemachineComponent<CinemachineFramingTransposer>();
+            if (f != null) data.distance = f.m_CameraDistance;
+
+            var tp = vcam.GetCinemachineComponent<Cinemachine3rdPersonFollow>();
+            if (tp != null) data.distance = tp.CameraDistance;
+
+            data.isCached = true;
+        }
+
+        // 2. Multiply the offset/distance by the boulder's current scale
+        var transposer = vcam.GetCinemachineComponent<CinemachineTransposer>();
+        if (transposer != null) transposer.m_FollowOffset = data.offset * Mathf.Sqrt(scale);
+
+        var framing = vcam.GetCinemachineComponent<CinemachineFramingTransposer>();
+        if (framing != null) framing.m_CameraDistance = data.distance * Mathf.Sqrt(scale);
+
+        var thirdPerson = vcam.GetCinemachineComponent<Cinemachine3rdPersonFollow>();
+        if (thirdPerson != null) thirdPerson.CameraDistance = data.distance * Mathf.Sqrt(scale);
+    }
+
     private void OnDestroy()
     {
         if (skinManager != null && skinManager.giantWeaponInScene != null) skinManager.giantWeaponInScene.DOKill();

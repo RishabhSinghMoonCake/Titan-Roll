@@ -35,7 +35,6 @@ public class LevelChunkLoader : MonoBehaviour
                 }
             }
 
-            Debug.Log($"<color=green>[PREFAB LOADER]</color> Crossed trigger! Spawned {prefabsToSpawn.Length} prefabs at their default locations.");
         }
     }
 }

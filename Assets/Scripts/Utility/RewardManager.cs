@@ -1,20 +1,20 @@
-using System.Collections.Generic;
 using UnityEngine;
-
-
-[System.Serializable]
-public struct GoldTier
-{
-    public float endDistance;
-    public float goldPerMeter;
-}
 
 public class RewardManager : MonoBehaviour
 {
     public static RewardManager Instance;
 
-    [Header("End of Run (Distance)")]
-    public List<GoldTier> distanceTiers;
+    [Header("Mathematical Reward Tuning")]
+    [Tooltip("Base gold multiplier per meter traveled.")]
+    public float distanceGoldCoefficient = 0.12f;
+    [Tooltip("Exponent for distance rewards. >1.0 means longer runs earn disproportionately more gold.")]
+    public float distanceGoldExponent = 1.35f;
+
+    [Header("Mathematical Income Tuning")]
+    [Tooltip("How fast the Greed multiplier grows per level.")]
+    public float incomeStepCoefficient = 0.15f;
+    [Tooltip("Exponent for Greed scaling. 1.2 provides steady, controlled growth forever.")]
+    public float incomeGrowthExponent = 1.2f;
 
     private float _accumulatedRunGold = 0f;
 
@@ -24,104 +24,58 @@ public class RewardManager : MonoBehaviour
         else Destroy(gameObject);
     }
 
-    // Called when the boulder is launched
     public void StartNewRun()
     {
         _accumulatedRunGold = 0f;
     }
 
-    // Called every time the boulder smashes an object
     public void ProcessDestructionReward(float baseReward, float zDistance)
     {
-
-        // 2. Income Multiplier (Greed Level)
         float incomeMultiplier = GetIncomeMultiplier();
-
-        // 3. The Final Cut
         float finalReward = baseReward * incomeMultiplier;
-
         _accumulatedRunGold += finalReward;
-
-        // Optional: You could Instantiate a floating "+15 Gold" UI text right here!
     }
 
-    // Called by GameLevelManager when the run finishes
-    // 1. The Calculator: The UI calls this to see how much gold WILL be earned.
+    /// <summary>
+    /// Pure mathematical distance reward: Gold = Coefficient * (Distance ^ Exponent)
+    /// Replaces the old foreach tier loop entirely!
+    /// </summary>
     public int CalculateRunRewards(float finalDistance)
     {
-        float remainingDist = finalDistance;
-        float distanceGold = 0f;
-        float previousTierEnd = 0f;
+        if (finalDistance <= 0f) return Mathf.FloorToInt(_accumulatedRunGold);
 
-        foreach (GoldTier tier in distanceTiers)
-        {
-            if (remainingDist <= 0) break;
-            float tierLength = tier.endDistance - previousTierEnd;
-            float distInTier = Mathf.Min(remainingDist, tierLength);
-            distanceGold += distInTier * tier.goldPerMeter;
-            remainingDist -= distInTier;
-            previousTierEnd = tier.endDistance;
-        }
+        // Calculate base distance payout using super-linear growth
+        float rawDistanceGold = distanceGoldCoefficient * Mathf.Pow(finalDistance, distanceGoldExponent);
 
-        distanceGold *= GetIncomeMultiplier();
-        return Mathf.FloorToInt(distanceGold + _accumulatedRunGold);
+        // Multiply by Greed stat
+        float totalDistanceGold = rawDistanceGold * GetIncomeMultiplier();
+
+        return Mathf.FloorToInt(totalDistanceGold + _accumulatedRunGold);
     }
 
-    // 2. The Finalizer: Called AFTER the continue button is pressed and coins fly.
     public void FinalizeRunRewards(float finalDistance)
     {
         int totalEarned = CalculateRunRewards(finalDistance);
-
-        // Pay the player
-        PlayerDataManager.Instance.AddGold(totalEarned);
-
-        // RESET the smash gold so it doesn't accidentally carry over to the next run!
+        if (PlayerDataManager.Instance != null)
+        {
+            PlayerDataManager.Instance.AddGold(totalEarned);
+        }
         _accumulatedRunGold = 0f;
     }
 
-    [Header("Income Progression")]
-    [Tooltip("Define exact multipliers. Index 0 = Level 1, Index 1 = Level 2, etc.")]
-    public float[] incomeMultiplierSteps = new float[]
-    {
-        1.0f, // Level 1 (Base)
-        1.1f, // Level 2 (+0.1)
-        1.2f, // Level 3 (+0.1)
-        1.3f, // Level 4 
-        1.6f, // Level 5 
-        1.9f, // Level 6
-        2.2f, // Level 7 
-        2.5f, // Level 8
-        2.7f, // Level 9
-        3.0f,
-        3.25f,
-        3.5f,
-        3.75f,
-        4f,
-        4.25f,
-        4.5f,
-        4.75f,
-        5f
-    };
-
+    /// <summary>
+    /// Pure mathematical income multiplier: Multiplier = 1.0 + [Coefficient * (Level - 1) ^ Exponent]
+    /// Replaces the 18-step array and handles infinite level growth cleanly.
+    /// </summary>
     public float GetIncomeMultiplier()
     {
-        if(PlayerDataManager.Instance == null) return 1.0f;
-        int index = PlayerDataManager.Instance.data.greedLevel - 1; // Arrays start at 0, levels start at 1
+        if (PlayerDataManager.Instance == null) return 1.0f;
+        int level = PlayerDataManager.Instance.data.greedLevel;
+        if (level <= 1) return 1.0f;
 
-        if (index < 0) return 1.0f;
+        // Yields: L2=1.15x, L5=1.79x, L10=3.08x, L15=4.85x, L50=22.8x
+        float addedMultiplier = incomeStepCoefficient * Mathf.Pow(level - 1, incomeGrowthExponent);
 
-        // If the array has the specific level defined, return it exactly.
-        if (index < incomeMultiplierSteps.Length)
-        {
-            return incomeMultiplierSteps[index];
-        }
-        else
-        {
-            // INFINITE FALLBACK: If they level past 10, keep adding 0.5 per level automatically
-            float lastDefinedValue = incomeMultiplierSteps[incomeMultiplierSteps.Length - 1];
-            int extraLevels = index - (incomeMultiplierSteps.Length - 1);
-
-            return lastDefinedValue + (extraLevels * 0.5f);
-        }
+        return 1.0f + addedMultiplier;
     }
 }

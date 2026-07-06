@@ -322,7 +322,13 @@ public class GameLevelManager : MonoBehaviour
         arcadeBoulder.transform.localScale = Vector3.one * currentScale;
 
         Rigidbody rb = arcadeBoulder.GetComponent<Rigidbody>();
-        float newMass = Mathf.Lerp(baseMass, massAtLevel40, (massLevel - 1) / 39f);
+
+        // --- PURE MATH MASS SCALING ---
+        // Formula: Mass = BaseMass + [MaxDelta * (Level / 39)^1.5]
+        // Provides slow early weight gain (50 -> 60 -> 72 -> 87kg) that ramps up to 865kg!
+        float t = Mathf.Max(0f, (float)(massLevel - 1) / 39f);
+        float newMass = baseMass + ((massAtLevel40 - baseMass) * Mathf.Pow(t, 1.5f));
+
         if (rb != null) rb.mass = newMass;
         if (InputManager.Instance != null) InputManager.Instance.currentBoulderMass = newMass;
 
@@ -334,6 +340,8 @@ public class GameLevelManager : MonoBehaviour
         }
 
         if (dynamicCamera != null) dynamicCamera.UpdateCameraDistance(currentScale);
+
+        if (launchSequenceManager != null) launchSequenceManager.UpdateCameraScales(currentScale);
         arcadeBoulder.ApplyUpgrades(massLevel);
     }
 
@@ -434,18 +442,24 @@ public class GameLevelManager : MonoBehaviour
 
     public float GetTotalLaunchSpeed()
     {
-        int strengthLvl = PlayerDataManager.Instance.data.strengthLevel;
-        int benchmark = EconomyManager.Instance.benchmarkStrength;
-        float t = (strengthLvl - 1) / (float)(benchmark - 1);
-        return Mathf.LerpUnclamped(60f, 350f, speedCurve.Evaluate(t));
+        int strengthLvl = PlayerDataManager.Instance != null ? PlayerDataManager.Instance.data.strengthLevel : 1;
+        int benchmark = EconomyManager.Instance != null ? EconomyManager.Instance.benchmarkStrength : 25;
+
+        float t = Mathf.Max(0f, (float)(strengthLvl - 1) / (benchmark - 1));
+        float mathCurve = Mathf.Pow(t, 0.85f);
+
+        return 60f + ((320f - 60f) * mathCurve);
     }
 
     public float GetLaunchStamina()
     {
-        int strengthLvl = PlayerDataManager.Instance.data.strengthLevel;
-        int benchmark = EconomyManager.Instance.benchmarkStrength;
-        float t = (strengthLvl - 1) / (float)(benchmark - 1);
-        return Mathf.LerpUnclamped(4f, 16f, staminaCurve.Evaluate(t));
+        int strengthLvl = PlayerDataManager.Instance != null ? PlayerDataManager.Instance.data.strengthLevel : 1;
+        int benchmark = EconomyManager.Instance != null ? EconomyManager.Instance.benchmarkStrength : 25;
+
+        float t = Mathf.Max(0f, (float)(strengthLvl - 1) / (benchmark - 1));
+        float mathCurve = Mathf.Pow(t, 0.75f);
+
+        return 4f + ((16f - 4f) * mathCurve);
     }
 
     private void StartEndRunSequence() => StartCoroutine(EndRunRoutine());
