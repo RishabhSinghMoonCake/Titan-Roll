@@ -2,12 +2,13 @@ using Cinemachine;
 using DG.Tweening;
 using System.Collections;
 using System.Collections.Generic;
-using UnityEngine;
-using UnityEngine.UI;
-using UnityEngine.InputSystem.EnhancedTouch;
-using UnityEngine.EventSystems;
-using Touch = UnityEngine.InputSystem.EnhancedTouch.Touch;
 using TMPro;
+using UnityEngine;
+using UnityEngine.EventSystems;
+using UnityEngine.InputSystem.EnhancedTouch;
+using UnityEngine.SceneManagement;
+using UnityEngine.UI;
+using Touch = UnityEngine.InputSystem.EnhancedTouch.Touch;
 
 public class LaunchSequenceManager : MonoBehaviour
 {
@@ -50,6 +51,15 @@ public class LaunchSequenceManager : MonoBehaviour
     public CinemachineVirtualCamera vcamHandCloseUp;
     [Header("Hit Effect")]
     public GameObject hitParticlePrefab;
+
+    [Header("Back Button UI")]
+    [Tooltip("Assign the CanvasGroup attached to your Back Button UI object.")]
+    public CanvasGroup backButtonCanvasGroup;
+    public float backButtonFadeDuration = 0.3f;
+
+    // --- NEW: Instant kill-switch flag to stop unintended launches ---
+    private bool _isAborted = false;
+
     private void Start()
     {
         InitializeNewRun();
@@ -57,10 +67,19 @@ public class LaunchSequenceManager : MonoBehaviour
 
     public void InitializeNewRun()
     {
+        _isAborted = false; // Reset abort flag on boot
         Time.timeScale = 1.0f;
         smoothedDragPower = 0f;
         targetDragPower = 0f;
         velocity = 0f;
+
+        if (backButtonCanvasGroup != null)
+        {
+            backButtonCanvasGroup.DOKill();
+            backButtonCanvasGroup.alpha = 0f;
+            backButtonCanvasGroup.blocksRaycasts = false;
+            backButtonCanvasGroup.interactable = false;
+        }
 
         if (upgradePanel != null)
         {
@@ -159,6 +178,21 @@ public class LaunchSequenceManager : MonoBehaviour
     private bool IsTouchOverUI(Vector2 screenPosition)
     {
         if (EventSystem.current == null) return false;
+
+        // 1. Check native Unity UI pointer (catches mouse and standard touch)
+        if (EventSystem.current.IsPointerOverGameObject()) return true;
+
+        // 2. Explicitly check active mobile touch IDs
+        if (UnityEngine.InputSystem.EnhancedTouch.Touch.activeTouches.Count > 0)
+        {
+            foreach (var touch in UnityEngine.InputSystem.EnhancedTouch.Touch.activeTouches)
+            {
+                if (EventSystem.current.IsPointerOverGameObject(touch.touchId)) return true;
+                if (EventSystem.current.IsPointerOverGameObject((int)touch.touchId)) return true;
+            }
+        }
+
+        // 3. Fallback to RaycastAll
         PointerEventData eventData = new PointerEventData(EventSystem.current) { position = screenPosition };
         List<RaycastResult> results = new List<RaycastResult>();
         EventSystem.current.RaycastAll(eventData, results);
@@ -201,24 +235,26 @@ public class LaunchSequenceManager : MonoBehaviour
         else
         {
             // --- NORMAL PLAYTHROUGH: START AT IDLE ---
-            CutToCamera(vcamIdle);  
+            CutToCamera(vcamIdle);
 
-            // PHASE 1: WAIT FOR THE FIRST START TAP
-            bool waitingForStart = true;  
-            while (waitingForStart)  
+            // THE FIX: Ignore touch inputs for 0.4s after boot so scene reloads don't auto-start!
+            float safeStartTime = Time.time + 0.4f;
+            //PHASE 1
+            bool waitingForStart = true;
+            while (waitingForStart)
             {
-                if (Touch.activeTouches.Count > 0)  
+                if (Time.time >= safeStartTime && Touch.activeTouches.Count > 0)
                 {
-                    var touch = Touch.activeTouches[0];  
-                    if (touch.phase == UnityEngine.InputSystem.TouchPhase.Began)  
+                    var touch = Touch.activeTouches[0];
+                    if (touch.phase == UnityEngine.InputSystem.TouchPhase.Began)
                     {
-                        if (!IsTouchOverUI(touch.screenPosition))  
+                        if (!IsTouchOverUI(touch.screenPosition))
                         {
                             waitingForStart = false; // Player clicked to start! 
                         }
                     }
                 }
-                yield return null;  
+                yield return null;
             }
 
             if (upgradePanel != null && upgradePanel.activeSelf)  
@@ -257,7 +293,15 @@ public class LaunchSequenceManager : MonoBehaviour
         CutToCamera(vcamMinigame);  
 
         if (timingMinigamePanel) timingMinigamePanel.SetActive(true);  
-        if (timingSlider) timingSlider.value = 0f;  
+        if (timingSlider) timingSlider.value = 0f;
+
+        if (backButtonCanvasGroup != null)
+        {
+            backButtonCanvasGroup.DOKill();
+            backButtonCanvasGroup.blocksRaycasts = true;
+            backButtonCanvasGroup.interactable = true;
+            backButtonCanvasGroup.DOFade(1f, backButtonFadeDuration);
+        }
 
         if (powerPercentageText != null)  
         {
@@ -269,13 +313,14 @@ public class LaunchSequenceManager : MonoBehaviour
 
         bool isDragging = false;  
         Vector2 startTouchPos = Vector2.zero;  
-        float dpiScale = Screen.dpi > 0 ? Screen.dpi / 160f : Screen.height / 1080f;  
-        float actualMaxDrag = maxDragPixels * dpiScale;  
+        float dpiScale = Screen.dpi > 0 ? Screen.dpi / 160f : Screen.height / 1080f;
+        float actualMaxDrag = Mathf.Max(10f, maxDragPixels * dpiScale);
         float safeInputTime = Time.time + inputDeadZoneDelay;  
         UnityEngine.InputSystem.EnhancedTouch.Finger activeFinger = null;  
 
         while (true)  
         {
+            if (_isAborted) yield break;
             if (Time.time >= safeInputTime)  
             {
                 var touches = Touch.activeTouches;  
@@ -286,11 +331,17 @@ public class LaunchSequenceManager : MonoBehaviour
                     {
                         if (touch.phase == UnityEngine.InputSystem.TouchPhase.Began)  
                         {
-                            if (IsTouchOverUI(touch.screenPosition)) continue;  
+                            if (IsTouchOverUI(touch.screenPosition)) continue;
 
                             isDragging = true;  
                             activeFinger = touch.finger;  
-                            startTouchPos = touch.screenPosition;  
+                            startTouchPos = touch.screenPosition;
+
+                            if (backButtonCanvasGroup != null)
+                            {
+                                backButtonCanvasGroup.blocksRaycasts = false;
+                                backButtonCanvasGroup.DOFade(0f, backButtonFadeDuration);
+                            }
 
                             if (handTutorialUI != null) handTutorialUI.StopTutorial();  
                             if (animator != null) animator.SetBool("IsHolding", true);  
@@ -348,7 +399,7 @@ public class LaunchSequenceManager : MonoBehaviour
             }
             yield return null;  
         }
-
+        if (_isAborted) yield break;
         if (timingMinigamePanel) timingMinigamePanel.SetActive(false);  
         if (powerPercentageText != null) powerPercentageText.gameObject.SetActive(false);  
 
@@ -374,7 +425,7 @@ public class LaunchSequenceManager : MonoBehaviour
 
             animator.SetTrigger("Release");
         }
-
+        if (_isAborted) yield break;
         if (isMaxPower)
         {
             // --- 100% POWER CRITICAL HIT SEQUENCE ---
@@ -435,25 +486,21 @@ public class LaunchSequenceManager : MonoBehaviour
             // --- STANDARD LAUNCH (< 100% POWER) ---
             yield return new WaitForSeconds(impactDelayAfterRelease);
         }
-
+        if (_isAborted) yield break;
         CutToCamera(vcamFollow);
 
-        /*if (animator != null)  
-        {
-            animator.SetBool("IsHolding", false);  
-            yield return new WaitForSeconds(0.05f);  
-            animator.SetTrigger("Release");  
-        }
-
-        yield return new WaitForSeconds(impactDelayAfterRelease);  
-        CutToCamera(vcamFollow); */ 
 
         float clampedPower = Mathf.Clamp01(smoothedDragPower);  
         float baseLaunchSpeed = GameLevelManager.Instance.GetTotalLaunchSpeed();  
         float finalPower = Mathf.Pow(clampedPower, 1.5f);  
         float finalSpeed = Mathf.Lerp(baseLaunchSpeed * 0.25f, baseLaunchSpeed, finalPower);  
 
-        FindObjectOfType<DynamicBoulderCamera>()?.TriggerLaunchSequence();  
+        FindObjectOfType<DynamicBoulderCamera>()?.TriggerLaunchSequence();
+
+        if (float.IsNaN(finalSpeed) || float.IsInfinity(finalSpeed) || finalSpeed <= 0f)
+        {
+            finalSpeed = 60f;
+        }
         boulder.Launch(finalSpeed);  
         GameLevelManager.Instance.SetStateToLaunched();  
     }
@@ -486,6 +533,57 @@ public class LaunchSequenceManager : MonoBehaviour
             CutToCamera(activeCam);
             yield return new WaitForSeconds(duration);
         }
+    }
+
+    /// <summary>
+    /// Hook this public method directly to your UI Back Button's OnClick event in the Inspector!
+    /// </summary>
+    public void OnBackButtonPressed()
+    {
+        _isAborted = true;
+        // 1. Instantly kill the minigame while(true) loop so no lingering touches trigger a launch!
+        StopAllCoroutines();
+        // 1. Immediately prevent double-clicking the button
+        if (backButtonCanvasGroup != null)
+        {
+            backButtonCanvasGroup.blocksRaycasts = false;
+            backButtonCanvasGroup.interactable = false;
+        }
+
+        // 2. Start the smooth reload sequence
+        StartCoroutine(SmoothReloadRoutine());
+    }
+
+    private IEnumerator SmoothReloadRoutine()
+    {
+        Time.timeScale = 1.0f;
+
+        // 2. Lock boulder physics instantly so it cannot fall or trigger Game Over
+        if (boulder != null)
+        {
+            var rb = boulder.GetComponent<Rigidbody>();
+            if (rb != null)
+            {
+                rb.isKinematic = false;
+                rb.velocity = Vector3.zero;
+                rb.isKinematic = true;
+            }
+        }
+
+        // 3. Fade out UI
+        if (backButtonCanvasGroup != null) backButtonCanvasGroup.DOFade(0f, 0.3f);
+        if (powerPercentageText != null) powerPercentageText.DOFade(0f, 0.2f);
+        if (handTutorialUI != null) handTutorialUI.StopTutorial();
+
+        if (timingMinigamePanel != null)
+        {
+            var panelGroup = timingMinigamePanel.GetComponent<CanvasGroup>();
+            if (panelGroup != null) panelGroup.DOFade(0f, 0.3f);
+            else timingMinigamePanel.transform.DOScale(Vector3.zero, 0.3f).SetEase(Ease.InBack);
+        }
+
+        yield return new WaitForSecondsRealtime(0.3f);
+        SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
     }
 
     public void ResetToIdleCamera()

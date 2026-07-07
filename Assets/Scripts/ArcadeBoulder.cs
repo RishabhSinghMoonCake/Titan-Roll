@@ -98,6 +98,21 @@ public class ArcadeBoulder : MonoBehaviour
     [Tooltip("Particle to spawn when the boulder takes 100% damage.")]
     public GameObject destroyed100PercentParticlePrefab;
 
+    [Header("Ground Trail Effect")]
+    public TrailRenderer groundTrail;
+    [Tooltip("How fast the trail fades out when stopping or going airborne.")]
+    public float trailFadeDuration = 0.35f;
+
+    [Header("Dynamic Surface Trail Colors")]
+    [Tooltip("Default color gradient for normal dirt/ground.")]
+    public Color dirtTrailColor = new Color(0.45f, 0.32f, 0.22f, 0.7f); // Brown
+    public Color stoneTrailColor = new Color(0.5f, 0.5f, 0.5f, 0.6f);   // Gray
+    public Color grassTrailColor = new Color(0.28f, 0.45f, 0.2f, 0.6f); // Green
+    public Color sandTrailColor = new Color(0.76f, 0.68f, 0.45f, 0.7f); // Sandy Yellow
+
+    private Color _currentTrailColor;
+    private Tweener _trailFadeTweener;
+
     private float _startZ;
     private int _lastDisplayedDistance = -1;
     private int _nextPopDistance = 500;
@@ -163,6 +178,11 @@ public class ArcadeBoulder : MonoBehaviour
         startingStamina = currentStamina;
 
         float speedMs = launchSpeedKmh / 3.6f;
+
+        if (float.IsNaN(speedMs) || float.IsInfinity(speedMs) || speedMs <= 0f)
+        {
+            speedMs = 15f; // Safe 54 km/h fallback
+        }
         maxStartLaunchSpeedMs = speedMs;
 
         Vector3 launchDir = (Vector3.forward + (Vector3.up * 0.15f)).normalized;
@@ -172,6 +192,12 @@ public class ArcadeBoulder : MonoBehaviour
         _startZ = transform.position.z;
         _lastDisplayedDistance = -1;
         _nextPopDistance = 500;
+
+        if (groundTrail != null)
+        {
+            groundTrail.Clear();      // Wipes any leftover trail from the previous run
+            groundTrail.emitting = true;
+        }
 
         if (distanceDisplay != null)
         {
@@ -215,6 +241,7 @@ public class ArcadeBoulder : MonoBehaviour
             if (currentDistance >= finishLineDistance && !_hasCrossedFinishLine)
             {
                 _hasCrossedFinishLine = true;
+                StopForPrestige(); 
                 GameLevelManager.Instance.TriggerPrestigeWin();
             }
 
@@ -363,12 +390,21 @@ public class ArcadeBoulder : MonoBehaviour
             isGrounded = true;
             _smoothedNormal = Vector3.Slerp(_smoothedNormal, hit.normal, Time.fixedDeltaTime * normalSmoothSpeed);
             currentNormal = _smoothedNormal;
+
+            // --- 1. UPDATE DYNAMIC SURFACE COLOR ---
+            UpdateTrailSurfaceColor(hit);
+
+            // --- 2. SMOOTHLY TURN TRAIL ON ---
+            SetTrailActive(true);
         }
         else
         {
             isGrounded = false;
             _smoothedNormal = Vector3.Slerp(_smoothedNormal, Vector3.up, Time.fixedDeltaTime * normalSmoothSpeed);
             currentNormal = _smoothedNormal;
+
+            // --- 3. SMOOTHLY FADE TRAIL OUT (PREVENTS SLITHERING!) ---
+            SetTrailActive(false);
         }
 
         // ----------------------------
@@ -628,8 +664,145 @@ public class ArcadeBoulder : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Instantly halts the boulder when crossing the level finish line.
+    /// Prevents normal Game Over from triggering!
+    /// </summary>
+    public void StopForPrestige()
+    {
+        isLaunched = false;
+        _hasCrossedFinishLine = true;
+
+        if (rb != null)
+        {
+            rb.velocity = Vector3.zero;
+            rb.angularVelocity = Vector3.zero;
+            rb.isKinematic = true;
+        }
+
+        HideDistanceDisplay();
+
+        if (speedLinesParticle != null && speedLinesParticle.isPlaying)
+        {
+            speedLinesParticle.Stop();
+        }
+    }
+
+    private void SetTrailActive(bool active)
+    {
+        if (groundTrail == null) return;
+
+        // Kill any ongoing fade animations so they don't fight
+        if (_trailFadeTweener != null) _trailFadeTweener.Kill();
+
+        if (active)
+        {
+            groundTrail.emitting = true;
+            // Smoothly fade alpha back up to full visibility
+            _trailFadeTweener = DOTween.To(() => groundTrail.startColor, x => UpdateTrailGradient(x), _currentTrailColor, 0.15f);
+        }
+        else if (groundTrail.emitting)
+        {
+            // --- THE ANTI-RETRACTION FIX ---
+            // Instead of instantly turning emitting off and watching the line shrink backward,
+            // we smoothly dissolve the color to transparent over 0.35s!
+            Color transparentColor = new Color(_currentTrailColor.r, _currentTrailColor.g, _currentTrailColor.b, 0f);
+
+            _trailFadeTweener = DOTween.To(() => groundTrail.startColor, x => UpdateTrailGradient(x), transparentColor, trailFadeDuration)
+                .OnComplete(() => {
+                    groundTrail.emitting = false;
+                });
+        }
+    }
+
+    private void UpdateTrailSurfaceColor(RaycastHit hit)
+    {
+        if (groundTrail == null) return;
+
+        Color targetColor = dirtTrailColor; // Default fallback
+
+        // Check if the collider we hit is a Unity Terrain
+        Terrain terrain = hit.collider.GetComponent<Terrain>();
+        if (terrain != null)
+        {
+            // Get the exact blended color based on the painted textures at this coordinate
+            targetColor = GetTerrainColorAtPoint(terrain, hit.point);
+        }
+        else
+        {
+            // Fallback for regular meshes/ramps if you still have any tagged objects
+            if (hit.collider.CompareTag("Stone")) targetColor = stoneTrailColor;
+            else if (hit.collider.CompareTag("Grass")) targetColor = grassTrailColor;
+            else if (hit.collider.CompareTag("Sand")) targetColor = sandTrailColor;
+            else if (hit.collider.CompareTag("Dirt")) targetColor = dirtTrailColor;
+        }
+
+        // Smoothly transition the trail color so it doesn't snap abruptly
+        _currentTrailColor = Color.Lerp(_currentTrailColor, targetColor, Time.fixedDeltaTime * 10f);
+        UpdateTrailGradient(_currentTrailColor);
+    }
+
+    /// <summary>
+    /// Reads the Terrain's splatmap at the boulder's world position and blends 
+    /// your trail colors to match the exact texture weights!
+    /// </summary>
+    private Color GetTerrainColorAtPoint(Terrain terrain, Vector3 worldPos)
+    {
+        TerrainData terrainData = terrain.terrainData;
+        Vector3 terrainPos = terrain.transform.position;
+
+        // 1. Calculate the relative position of the boulder on the terrain (0.0 to 1.0)
+        int mapX = Mathf.FloorToInt(((worldPos.x - terrainPos.x) / terrainData.size.x) * terrainData.alphamapWidth);
+        int mapZ = Mathf.FloorToInt(((worldPos.z - terrainPos.z) / terrainData.size.z) * terrainData.alphamapHeight);
+
+        // Clamp coordinates to prevent out-of-bounds errors at the very edges of the map
+        mapX = Mathf.Clamp(mapX, 0, terrainData.alphamapWidth - 1);
+        mapZ = Mathf.Clamp(mapZ, 0, terrainData.alphamapHeight - 1);
+
+        // 2. Grab the texture mix weights at this exact 1x1 pixel coordinate
+        float[,,] splatmapData = terrainData.GetAlphamaps(mapX, mapZ, 1, 1);
+
+        // 3. Map your script colors to the Terrain Layer indices (Layer 0, Layer 1, Layer 2, etc.)
+        // Ensure this array order matches the order of layers in your Terrain Inspector!
+        Color[] layerColors = new Color[]
+        {
+            dirtTrailColor,  // Index 0 (e.g., Base Dirt)
+            stoneTrailColor, // Index 1 (e.g., Rock/Cliff)
+            grassTrailColor, // Index 2 (e.g., Grass)
+            sandTrailColor   // Index 3 (e.g., Sand)
+        };
+
+        // 4. Blend the colors together based on how heavily each texture is painted here
+        Color blendedColor = Color.clear;
+        int numLayers = Mathf.Min(terrainData.alphamapLayers, layerColors.Length);
+
+        for (int i = 0; i < numLayers; i++)
+        {
+            float textureWeight = splatmapData[0, 0, i];
+            blendedColor += layerColors[i] * textureWeight;
+        }
+
+        // If for some reason the weight is 0, return default dirt
+        return blendedColor != Color.clear ? blendedColor : dirtTrailColor;
+    }
+
+    private void UpdateTrailGradient(Color baseColor)
+    {
+        if (groundTrail == null) return;
+
+        Gradient gradient = new Gradient();
+        gradient.SetKeys(
+            new GradientColorKey[] { new GradientColorKey(baseColor, 0.0f), new GradientColorKey(baseColor, 1.0f) },
+            new GradientAlphaKey[] { new GradientAlphaKey(baseColor.a, 0.0f), new GradientAlphaKey(0.0f, 1.0f) } // Tail always fades to 0
+        );
+        groundTrail.colorGradient = gradient;
+    }
+
     private void HideDistanceDisplay()
     {
+        // This triggers the graceful alpha dissolve when your run finishes or resets!
+        SetTrailActive(false);
+
         if (distanceDisplay != null)
         {
             distanceDisplay.DOKill();

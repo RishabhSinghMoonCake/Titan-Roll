@@ -38,7 +38,6 @@ public class GameLevelManager : MonoBehaviour
 
     [Header("Progression Curves")]
     public AnimationCurve speedCurve;
-    public AnimationCurve staminaCurve;
 
     [Header("Camera")]
     public DynamicBoulderCamera dynamicCamera;
@@ -76,11 +75,38 @@ public class GameLevelManager : MonoBehaviour
     public TextMeshProUGUI gameOverTallyText; // Show the gold earned THIS run
     public int visualCoinsToSpawn = 20;
 
+    [Header("Coin Fountain Tuning")]
+    [Tooltip("Time delay between each coin shooting out of the boulder.")]
+    public float coinSpawnDelay = 0.04f;
+    [Tooltip("How hard the coins shoot up into the air.")]
+    public float coinUpwardForce = 10f;
+    [Tooltip("How wide the scatter cone is.")]
+    public float coinSpreadRadius = 4.5f;
+    [Tooltip("Random variation applied to the force so they don't look perfectly uniform.")]
+    [Range(0f, 1f)] public float coinRandomness = 0.3f;
+
+    [Header("Coin UI Flight Tuning")]
+    [Tooltip("How small the coins shrink when they reach the top right UI. (e.g., 0.2 = 20% of original size)")]
+    [Range(0.05f, 1f)] public float uiCoinScaleMultiplier = 0.2f;
+    [Tooltip("How long it takes the coins to fly across the screen.")]
+    public float coinFlightDuration = 0.85f;
+    [Tooltip("Delay between each coin launching towards the UI.")]
+    public float coinFlightStagger = 0.04f;
+
     [Header("Game Over UI Text")]
     public TextMeshProUGUI currentRunText;
     public TextMeshProUGUI bestRunText;
     public TextMeshProUGUI totalGoldText;
     public UnityEngine.UI.Button continueButton;
+    [Tooltip("UI Badge or Text that says 'NEW REWARD!' or 'NEW RECORD!' when previous best is beaten.")]
+    public GameObject newRecordBadge; // <-- NEW: The celebration badge!
+
+    [Header("Level Cleared (Prestige) Dedicated UI")]
+    public GameObject levelClearedPanel;       // <-- NEW: Completely separate from Game Over!
+    public TextMeshProUGUI levelClearedTitleText;
+    public TextMeshProUGUI levelClearedBonusText;
+    public TextMeshProUGUI nextLevelPreviewText;
+    public UnityEngine.UI.Button prestigeContinueButton;
 
     // These variables hold data between the run ending and the continue button being pressed
     private List<GameObject> _activeRewardCoins = new List<GameObject>();
@@ -445,10 +471,16 @@ public class GameLevelManager : MonoBehaviour
         int strengthLvl = PlayerDataManager.Instance != null ? PlayerDataManager.Instance.data.strengthLevel : 1;
         int benchmark = EconomyManager.Instance != null ? EconomyManager.Instance.benchmarkStrength : 25;
 
-        float t = Mathf.Max(0f, (float)(strengthLvl - 1) / (benchmark - 1));
-        float mathCurve = Mathf.Pow(t, 0.85f);
+        // 1. Normalize progress against the benchmark (0.0 at Level 1, 1.0 at Benchmark Level)
+        float t = Mathf.Max(0f, (float)(strengthLvl - 1) / Mathf.Max(1f, (float)(benchmark - 1)));
 
-        return 60f + ((320f - 60f) * mathCurve);
+        // 2. Diminishing Returns Power Curve (t^0.75)
+        // This gives punchy, noticeable speed boosts in early levels while maintaining steady endgame growth!
+        float mathCurve = Mathf.Pow(t, 0.75f);
+
+        // 3. Scale between baseLaunchSpeed (~140 km/h) and benchmark target (~350 km/h)
+        // LerpUnclamped ensures that when players progress past Level 25, speed continues growing infinitely!
+        return Mathf.LerpUnclamped(baseLaunchSpeed, 350f, mathCurve);
     }
 
     public float GetLaunchStamina()
@@ -457,7 +489,7 @@ public class GameLevelManager : MonoBehaviour
         int benchmark = EconomyManager.Instance != null ? EconomyManager.Instance.benchmarkStrength : 25;
 
         float t = Mathf.Max(0f, (float)(strengthLvl - 1) / (benchmark - 1));
-        float mathCurve = Mathf.Pow(t, 0.75f);
+        float mathCurve = Mathf.Pow(t, 0.7f);
 
         return 4f + ((16f - 4f) * mathCurve);
     }
@@ -473,59 +505,86 @@ public class GameLevelManager : MonoBehaviour
         currentState = GameState.Idle;
         _lastRunDistance = arcadeBoulder.transform.position.z;
         Vector3 boulderPos = arcadeBoulder.transform.position;
-
         bool isNewRecord = _lastRunDistance > PlayerDataManager.Instance.data.bestDistance;
 
-        // 1. Deflate the boulder smoothly
         if (arcadeBoulder.visualMesh != null)
-        {
             arcadeBoulder.visualMesh.DOScale(Vector3.zero, 1f).SetEase(Ease.InBack);
-        }
         else
-        {
             arcadeBoulder.transform.DOScale(Vector3.zero, 1f).SetEase(Ease.InBack);
-        }
 
-        if (isNewRecord && HighScoreVisuals.Instance != null)
+        if (HighScoreVisuals.Instance != null)
         {
             HighScoreVisuals.Instance.PlantNewRecordFlag(boulderPos);
         }
 
-        yield return new WaitForSeconds(0.8f);
+        yield return new WaitForSeconds(0.6f);
 
-        // 2. Spawn the 3D Coin Fountain
+        // ==========================================
+        // SPAWN PHYSICAL COIN FOUNTAIN (SEQUENTIAL CONE)
+        // ==========================================
         _activeRewardCoins.Clear();
         for (int i = 0; i < visualCoinsToSpawn; i++)
         {
-            GameObject coin = Instantiate(coin3DPrefab, boulderPos, Quaternion.identity);
+            Vector3 spawnPos = boulderPos + (Vector3.up * 1.5f);
+            GameObject coin = Instantiate(coin3DPrefab, spawnPos, Random.rotation);
             _activeRewardCoins.Add(coin);
 
-            Vector2 randomCircle = Random.insideUnitCircle * 3f;
-            Vector3 targetPos = boulderPos + new Vector3(randomCircle.x, 0f, randomCircle.y);
+            Rigidbody rb = coin.GetComponent<Rigidbody>();
+            if (rb != null)
+            {
+                rb.isKinematic = false;
+                rb.useGravity = true;
+                rb.collisionDetectionMode = CollisionDetectionMode.Continuous;
 
-            coin.transform.DOJump(targetPos, jumpPower: Random.Range(3f, 6f), numJumps: 1, duration: 0.6f).SetEase(Ease.OutQuad);
-            coin.transform.DORotate(new Vector3(Random.Range(0, 360), Random.Range(0, 360), Random.Range(0, 360)), 0.6f, RotateMode.FastBeyond360);
+                // 1. Base upward pop
+                Vector3 upwardForce = Vector3.up * coinUpwardForce;
 
-            yield return new WaitForSeconds(0.02f);
+                // 2. Outward spread cone (random point in a flat circle)
+                Vector2 randomCircle = Random.insideUnitCircle * coinSpreadRadius;
+                Vector3 spreadForce = new Vector3(randomCircle.x, 0f, randomCircle.y);
+
+                // 3. Combine and apply random multiplier
+                Vector3 finalForce = upwardForce + spreadForce;
+                finalForce *= 1f + Random.Range(-coinRandomness, coinRandomness);
+
+                rb.AddForce(finalForce, ForceMode.Impulse);
+                rb.AddTorque(Random.insideUnitSphere * 25f, ForceMode.Impulse);
+            }
+            else
+            {
+                // Fallback for non-rigidbody coins
+                Vector2 randomCircle = Random.insideUnitCircle * 3.5f;
+                Vector3 targetPos = boulderPos + new Vector3(randomCircle.x, 0f, randomCircle.y);
+                coin.transform.DOJump(targetPos, jumpPower: Random.Range(3f, 5f), numJumps: 2, duration: 0.7f).SetEase(Ease.OutBounce);
+            }
+
+            // THE FIX: Wait a fraction of a second before shooting the next coin!
+            yield return new WaitForSeconds(coinSpawnDelay);
         }
 
         yield return new WaitForSeconds(0.5f);
 
-        // 3. Show Panel & Populate Data
+        // Show Game Over Panel & Populate Data
         if (gameOverPanel != null) gameOverPanel.SetActive(true);
         if (continueButton != null) continueButton.interactable = false;
 
-        // --- SAVE THE BEST DISTANCE BEFORE UI UPDATE ---
+        if (newRecordBadge != null)
+        {
+            newRecordBadge.SetActive(isNewRecord);
+            if (isNewRecord)
+            {
+                newRecordBadge.transform.DOKill();
+                newRecordBadge.transform.localScale = Vector3.zero;
+                newRecordBadge.transform.DOScale(Vector3.one, 0.5f).SetEase(Ease.OutBack).SetDelay(0.2f);
+            }
+        }
+
         PlayerDataManager.Instance.UpdateBestDistance(_lastRunDistance);
 
-        // Populate distance texts
         if (currentRunText != null) currentRunText.text = $"{Mathf.FloorToInt(_lastRunDistance)}m";
         if (bestRunText != null) bestRunText.text = $"Best : {Mathf.FloorToInt(PlayerDataManager.Instance.data.bestDistance)}m";
-
-        // Populate total gold (Gold BEFORE the run ended)
         if (totalGoldText != null) totalGoldText.text = FormatMoney(PlayerDataManager.Instance.data.gold);
 
-        // --- CALCULATE ACTUAL GOLD EARNED FOR UI TALLY ---
         int actualGoldEarned = RewardManager.Instance.CalculateRunRewards(_lastRunDistance);
         int displayGold = 0;
 
@@ -539,9 +598,72 @@ public class GameLevelManager : MonoBehaviour
         }
 
         yield return new WaitForSeconds(1.5f);
-
-        // 4. Enable Continue Button
         if (continueButton != null) continueButton.interactable = true;
+    }
+
+    private IEnumerator FinalizeAndReloadRoutine()
+    {
+        Camera mainCam = Camera.main;
+
+        foreach (var coin in _activeRewardCoins)
+        {
+            if (coin == null) continue;
+
+            Rigidbody rb = coin.GetComponent<Rigidbody>();
+            if (rb != null)
+            {
+                rb.velocity = Vector3.zero;
+                rb.angularVelocity = Vector3.zero;
+                rb.isKinematic = true;
+            }
+
+            Collider col = coin.GetComponent<Collider>();
+            if (col != null) col.enabled = false;
+
+            if (mainCam != null && goldTextTarget != null)
+            {
+                Vector3 screenTarget = goldTextTarget.position;
+                screenTarget.z = 4.5f;
+                Vector3 worldTarget = mainCam.ScreenToWorldPoint(screenTarget);
+
+                Vector3 initialScale = coin.transform.localScale;
+
+                // THE FIX: Target UI size uses your new Inspector variable!
+                Vector3 targetUiScale = initialScale * uiCoinScaleMultiplier;
+
+                // Smooth Flight Tween
+                coin.transform.DOMove(worldTarget, coinFlightDuration).SetEase(Ease.InOutCubic);
+
+                // Proportional Size Shrink
+                coin.transform.DOScale(targetUiScale, coinFlightDuration).SetEase(Ease.InOutCubic).OnComplete(() =>
+                {
+                    if (coin != null)
+                    {
+                        Sequence popSeq = DOTween.Sequence();
+                        popSeq.Append(coin.transform.DOScale(targetUiScale * 1.35f, 0.1f).SetEase(Ease.OutQuad));
+                        popSeq.Append(coin.transform.DOScale(Vector3.zero, 0.15f).SetEase(Ease.InBack));
+                        popSeq.OnComplete(() => Destroy(coin));
+
+                        if (goldTextTarget != null)
+                        {
+                            goldTextTarget.DOKill(true);
+                            goldTextTarget.DOPunchScale(new Vector3(0.18f, 0.18f, 0.18f), 0.15f, 10, 1f);
+                        }
+                    }
+                });
+            }
+
+            // Stagger each coin's departure based on your tuning settings
+            yield return new WaitForSeconds(coinFlightStagger);
+        }
+
+        yield return new WaitForSeconds(coinFlightDuration + 0.3f);
+
+        RewardManager.Instance.FinalizeRunRewards(_lastRunDistance);
+        UpdateUI();
+
+        yield return new WaitForSeconds(0.2f);
+        SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
     }
 
     // Link this method to your UI Button's OnClick event in the Inspector!
@@ -551,49 +673,6 @@ public class GameLevelManager : MonoBehaviour
         StartCoroutine(FinalizeAndReloadRoutine());
     }
 
-    private IEnumerator FinalizeAndReloadRoutine()
-    {
-        Camera mainCam = Camera.main;
-
-        // 1. Fly 3D coins directly to the 2D UI Text
-        foreach (var coin in _activeRewardCoins)
-        {
-            if (mainCam != null && coin != null)
-            {
-                // Convert screen target to world space for the 3D coin
-                Vector3 screenTarget = goldTextTarget.position;
-                screenTarget.z = 5f;
-                Vector3 worldTarget = mainCam.ScreenToWorldPoint(screenTarget);
-
-                coin.transform.DOMove(worldTarget, 0.6f).SetEase(Ease.InBack);
-            }
-
-            if (coin != null) coin.transform.DOScale(Vector3.zero, 0.6f).SetEase(Ease.InBack);
-            yield return new WaitForSeconds(0.02f);
-        }
-
-        yield return new WaitForSeconds(0.6f);
-
-        // 2. Finalize rewards & punch the UI text to show it registered
-        RewardManager.Instance.FinalizeRunRewards(_lastRunDistance);
-        UpdateUI();
-
-        if (goldTextTarget != null)
-        {
-            goldTextTarget.DOPunchScale(new Vector3(0.3f, 0.3f, 0.3f), 0.3f, 5);
-        }
-
-        // Cleanup the 3D coins
-        foreach (var coin in _activeRewardCoins)
-        {
-            if (coin != null) Destroy(coin);
-        }
-        _activeRewardCoins.Clear();
-
-        // 3. Reset the scene
-        yield return new WaitForSeconds(1f);
-        SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
-    }
 
     public void TriggerPrestigeWin()
     {
@@ -604,37 +683,23 @@ public class GameLevelManager : MonoBehaviour
     {
         currentState = GameState.Idle;
         int currentLevel = PlayerPrefs.GetInt("PrestigeLevel", 1);
+        int nextLevel = currentLevel + 1;
 
-        // --- 1. THE CINEMATIC CAMERA TRICK ---
-        // Find your LaunchSequenceManager to access the Cinemachine cameras
+        // 1. Ensure normal Game Over panel is off
+        if (gameOverPanel != null) gameOverPanel.SetActive(false);
+
+        // 2. Freeze camera tracking cleanly
         LaunchSequenceManager launchManager = FindObjectOfType<LaunchSequenceManager>();
-
         if (launchManager != null && launchManager.vcamFollow != null)
         {
-            // Remove the Follow target so the camera completely freezes its position in the world
             launchManager.vcamFollow.Follow = null;
-
-            // Ensure LookAt is still pointing at the boulder so the camera swivels to watch it leave
-            if (arcadeBoulder != null)
-            {
-                launchManager.vcamFollow.LookAt = arcadeBoulder.transform;
-            }
         }
-
-        // If you are also using a custom script like DynamicBoulderCamera to handle movement, disable it here
         DynamicBoulderCamera customCam = FindObjectOfType<DynamicBoulderCamera>();
         if (customCam != null) customCam.enabled = false;
 
-        // 2. Let the player watch the boulder roll away for 3.5 seconds
-        // 1. Let the player watch the boulder roll away for 3.5 seconds
-        yield return new WaitForSeconds(3.5f);
-
-        // 2. TRIGGER YOUR EXISTING NORMAL GAME OVER SYSTEM!
-        // This will fire your built-in cleanup: hiding the ball, fading out the distance/speed HUD, and opening the Game Over panel.
-        StartEndRunSequence(); // (Or whatever your normal game over method is named in GameLevelManager)
+        yield return new WaitForSeconds(0.5f);
 
         // 3. Calculate Prestige Data & Wipe Save
-        int nextLevel = currentLevel + 1;
         PlayerPrefs.SetInt("PrestigeLevel", nextLevel);
         PlayerPrefs.Save();
 
@@ -649,12 +714,29 @@ public class GameLevelManager : MonoBehaviour
             PlayerDataManager.Instance.Save();
         }
 
-        // 4. OVERRIDE THE TEXT LABELS
-        // Since your normal Game Over just opened the panel, we simply override the text to show the Prestige rewards instead!
-        if (gameOverTallyText != null) gameOverTallyText.text = "PRESTIGE RANK UP!";
-        if (currentRunText != null) currentRunText.text = $"LEVEL {currentLevel} CLEARED!";
-        if (bestRunText != null) bestRunText.text = $"Next Level: {nextLevel}";
-        if (totalGoldText != null) totalGoldText.text = $"Bonus: +{startingGoldBonus}";
+        // 4. THE FIX: Open the Dedicated Level Cleared Panel!
+        if (levelClearedPanel != null)
+        {
+            levelClearedPanel.SetActive(true);
+            levelClearedPanel.transform.DOKill();
+            levelClearedPanel.transform.localScale = Vector3.zero;
+            levelClearedPanel.transform.DOScale(Vector3.one, 0.5f).SetEase(Ease.OutBack);
+        }
+
+        if (prestigeContinueButton != null) prestigeContinueButton.interactable = true;
+
+        if (levelClearedTitleText != null) levelClearedTitleText.text = $"LEVEL {currentLevel} CLEARED!";
+        if (nextLevelPreviewText != null) nextLevelPreviewText.text = $"Entering Level {nextLevel}!";
+        if (levelClearedBonusText != null) levelClearedBonusText.text = $"+{FormatMoney(startingGoldBonus)} GOLD BONUS";
+    }
+
+    /// <summary>
+    /// Hook this directly to the Continue Button inside your Level Cleared Panel!
+    /// </summary>
+    public void OnPrestigeContinuePressed()
+    {
+        if (prestigeContinueButton != null) prestigeContinueButton.interactable = false;
+        SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
     }
 
     private void OnDestroy()

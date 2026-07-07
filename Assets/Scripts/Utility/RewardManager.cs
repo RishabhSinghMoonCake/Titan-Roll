@@ -37,18 +37,33 @@ public class RewardManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Pure mathematical distance reward: Gold = Coefficient * (Distance ^ Exponent)
-    /// Replaces the old foreach tier loop entirely!
+    /// Calculates distance rewards with an EXACT 1:1 payout up to 500m, 
+    /// then scales up for mid and late-game distance milestones.
     /// </summary>
     public int CalculateRunRewards(float finalDistance)
     {
         if (finalDistance <= 0f) return Mathf.FloorToInt(_accumulatedRunGold);
 
-        // Calculate base distance payout using super-linear growth
-        float rawDistanceGold = distanceGoldCoefficient * Mathf.Pow(finalDistance, distanceGoldExponent);
+        float baseDistanceGold = 0f;
 
-        // Multiply by Greed stat
-        float totalDistanceGold = rawDistanceGold * GetIncomeMultiplier();
+        // --- RULE 1: FIRST 500m = EXACT 1:1 PAYOUT ---
+        if (finalDistance <= 500f)
+        {
+            baseDistanceGold = finalDistance * 1.0f; // 100m = 100g, 500m = 500g
+        }
+        else if (finalDistance <= 1500f)
+        {
+            // 500m to 1500m: Pays 500g for the first 500m, plus 1.6x for meters beyond 500
+            baseDistanceGold = 500f + ((finalDistance - 500f) * 1.6f);
+        }
+        else
+        {
+            // 1500m+: Pays 2100g for the first 1500m, plus 2.6x for meters beyond 1500
+            baseDistanceGold = 2100f + ((finalDistance - 1500f) * 2.6f);
+        }
+
+        // Apply the player's Greed (Income) Multiplier
+        float totalDistanceGold = baseDistanceGold * GetIncomeMultiplier();
 
         return Mathf.FloorToInt(totalDistanceGold + _accumulatedRunGold);
     }
@@ -64,8 +79,7 @@ public class RewardManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Pure mathematical income multiplier: Multiplier = 1.0 + [Coefficient * (Level - 1) ^ Exponent]
-    /// Replaces the 18-step array and handles infinite level growth cleanly.
+    /// Smooth income growth: L1=1.00x, L5=1.79x, L10=3.08x, L15=4.85x
     /// </summary>
     public float GetIncomeMultiplier()
     {
@@ -73,9 +87,7 @@ public class RewardManager : MonoBehaviour
         int level = PlayerDataManager.Instance.data.greedLevel;
         if (level <= 1) return 1.0f;
 
-        // Yields: L2=1.15x, L5=1.79x, L10=3.08x, L15=4.85x, L50=22.8x
-        float addedMultiplier = incomeStepCoefficient * Mathf.Pow(level - 1, incomeGrowthExponent);
-
+        float addedMultiplier = 0.15f * Mathf.Pow(level - 1, 1.2f);
         return 1.0f + addedMultiplier;
     }
 }
