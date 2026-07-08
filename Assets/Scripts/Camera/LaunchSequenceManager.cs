@@ -219,6 +219,7 @@ public class LaunchSequenceManager : MonoBehaviour
             if (upgradePanel != null) upgradePanel.SetActive(false);  
             if (tapToPlayText != null) tapToPlayText.gameObject.SetActive(false);  
             if (LevelText != null) LevelText.gameObject.SetActive(false);  
+            if(backButtonCanvasGroup != null) backButtonCanvasGroup.gameObject.SetActive(false);
 
             // 3. Instantly snap weapon to hand without the 0.5s animation wait
             if (skinManager != null && skinManager.giantWeaponInScene != null && skinManager.currentWeaponSocket != null)
@@ -416,6 +417,9 @@ public class LaunchSequenceManager : MonoBehaviour
             {
                 // 1. 50% FASTER SLOW-MO: Increased from 0.35f to 0.70f speed!
                 Time.timeScale = 0.7f;
+
+
+
                 yield return new WaitForSecondsRealtime(0.05f);
             }
             else
@@ -468,11 +472,10 @@ public class LaunchSequenceManager : MonoBehaviour
                 }
             }
 
-            // 4. CAMERA SHAKE AT IMPACT
-            CinemachineImpulseSource impulse = boulder != null ? boulder.GetComponent<CinemachineImpulseSource>() : GetComponent<CinemachineImpulseSource>();
-            if (impulse != null)
+            // --- TRIGGER EPIC SHAKE ON MAX POWER LAUNCH ---
+            if (CustomCameraShaker.Instance != null)
             {
-                impulse.GenerateImpulse(1.2f); // Max intensity shake
+                CustomCameraShaker.Instance.Shake(ShakeType.Epic);
             }
 
             // Hold the freeze for exactly 4 frames at 60 FPS (~0.066 real seconds)
@@ -484,7 +487,14 @@ public class LaunchSequenceManager : MonoBehaviour
         else
         {
             // --- STANDARD LAUNCH (< 100% POWER) ---
+
+
             yield return new WaitForSeconds(impactDelayAfterRelease);
+            // --- TRIGGER STANDARD SHAKE FOR NORMAL LAUNCHES ---
+            if (CustomCameraShaker.Instance != null)
+            {
+                CustomCameraShaker.Instance.Shake(ShakeType.Short);
+            }
         }
         if (_isAborted) yield break;
         CutToCamera(vcamFollow);

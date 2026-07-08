@@ -36,8 +36,6 @@ public class GameLevelManager : MonoBehaviour
     public float baseMass = 50f;
     public float speedPerStrengthLevel = 14f;
 
-    [Header("Progression Curves")]
-    public AnimationCurve speedCurve;
 
     [Header("Camera")]
     public DynamicBoulderCamera dynamicCamera;
@@ -369,6 +367,11 @@ public class GameLevelManager : MonoBehaviour
 
         if (launchSequenceManager != null) launchSequenceManager.UpdateCameraScales(currentScale);
         arcadeBoulder.ApplyUpgrades(massLevel);
+
+        if (arcadeBoulder != null)
+        {
+            arcadeBoulder.UpdateTrailWidth(currentScale);
+        }
     }
 
     private void SwapBoulderSkinOnly()

@@ -7501,7 +7501,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1825f86dea544914296c3a790cca8549, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  targetMassLevel: 18
+  targetMassLevel: 19
   maxDamagePenalty: 1
   fracturedPrefab: {fileID: 0}
   dustEffectPrefab: {fileID: 187952, guid: 841c1fd4e90f9f042a15fa258e9ea984, type: 3}
@@ -7681,8 +7681,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1825f86dea544914296c3a790cca8549, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  targetMassLevel: 15
-  maxDamagePenalty: 0.8
+  targetMassLevel: 19
+  maxDamagePenalty: 1
   fracturedPrefab: {fileID: 0}
   dustEffectPrefab: {fileID: 187952, guid: 841c1fd4e90f9f042a15fa258e9ea984, type: 3}
 --- !u!4 &1644687543123265091 stripped
@@ -7853,14 +7853,6 @@ PrefabInstance:
         type: 3}
       insertIndex: -1
       addedObject: {fileID: 8130933022782802859}
-    - targetCorrespondingSourceObject: {fileID: 1921929420323568, guid: 736a0b6656163d24a91f1aa4bf456a69,
-        type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 8192105089007632162}
-    - targetCorrespondingSourceObject: {fileID: 1921929420323568, guid: 736a0b6656163d24a91f1aa4bf456a69,
-        type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 6107294533107509209}
     - targetCorrespondingSourceObject: {fileID: 1948676980640262, guid: 736a0b6656163d24a91f1aa4bf456a69,
         type: 3}
       insertIndex: -1
@@ -7912,49 +7904,6 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1796942914128825980}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1825f86dea544914296c3a790cca8549, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  targetMassLevel: 15
-  maxDamagePenalty: 0.8
-  fracturedPrefab: {fileID: 0}
-  dustEffectPrefab: {fileID: 187952, guid: 841c1fd4e90f9f042a15fa258e9ea984, type: 3}
---- !u!1 &1796999734848323210 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 1921929420323568, guid: 736a0b6656163d24a91f1aa4bf456a69,
-    type: 3}
-  m_PrefabInstance: {fileID: 1798882665965503610}
-  m_PrefabAsset: {fileID: 0}
---- !u!65 &8192105089007632162
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1796999734848323210}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_IsTrigger: 1
-  m_ProvidesContacts: 0
-  m_Enabled: 1
-  serializedVersion: 3
-  m_Size: {x: 2.4417434, y: 16.5, z: 6.0619383}
-  m_Center: {x: 9.035754, y: 8.25, z: 12.783907}
---- !u!114 &6107294533107509209
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1796999734848323210}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 1825f86dea544914296c3a790cca8549, type: 3}
@@ -8089,8 +8038,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1825f86dea544914296c3a790cca8549, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  targetMassLevel: 15
-  maxDamagePenalty: 0.8
+  targetMassLevel: 19
+  maxDamagePenalty: 1
   fracturedPrefab: {fileID: 0}
   dustEffectPrefab: {fileID: 187952, guid: 841c1fd4e90f9f042a15fa258e9ea984, type: 3}
 --- !u!4 &1799292786732047036 stripped
@@ -8197,8 +8146,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1825f86dea544914296c3a790cca8549, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  targetMassLevel: 15
-  maxDamagePenalty: 0.8
+  targetMassLevel: 19
+  maxDamagePenalty: 1
   fracturedPrefab: {fileID: 0}
   dustEffectPrefab: {fileID: 187952, guid: 841c1fd4e90f9f042a15fa258e9ea984, type: 3}
 --- !u!1001 &2284638787317791093
@@ -8299,8 +8248,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1825f86dea544914296c3a790cca8549, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  targetMassLevel: 15
-  maxDamagePenalty: 0.8
+  targetMassLevel: 19
+  maxDamagePenalty: 1
   fracturedPrefab: {fileID: 0}
   dustEffectPrefab: {fileID: 187952, guid: 841c1fd4e90f9f042a15fa258e9ea984, type: 3}
 --- !u!1001 &3112303619297432366
@@ -9225,8 +9174,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1825f86dea544914296c3a790cca8549, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  targetMassLevel: 15
-  maxDamagePenalty: 0.8
+  targetMassLevel: 19
+  maxDamagePenalty: 1
   fracturedPrefab: {fileID: 0}
   dustEffectPrefab: {fileID: 187952, guid: 841c1fd4e90f9f042a15fa258e9ea984, type: 3}
 --- !u!4 &3561767687419712839 stripped
@@ -9607,8 +9556,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1825f86dea544914296c3a790cca8549, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  targetMassLevel: 15
-  maxDamagePenalty: 0.8
+  targetMassLevel: 19
+  maxDamagePenalty: 1
   fracturedPrefab: {fileID: 0}
   dustEffectPrefab: {fileID: 187952, guid: 841c1fd4e90f9f042a15fa258e9ea984, type: 3}
 --- !u!1 &4751642830927262912 stripped
@@ -10009,8 +9958,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1825f86dea544914296c3a790cca8549, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  targetMassLevel: 15
-  maxDamagePenalty: 0.8
+  targetMassLevel: 19
+  maxDamagePenalty: 1
   fracturedPrefab: {fileID: 0}
   dustEffectPrefab: {fileID: 187952, guid: 841c1fd4e90f9f042a15fa258e9ea984, type: 3}
 --- !u!4 &4944978224151387853 stripped
@@ -10432,8 +10381,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1825f86dea544914296c3a790cca8549, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  targetMassLevel: 15
-  maxDamagePenalty: 0.8
+  targetMassLevel: 19
+  maxDamagePenalty: 1
   fracturedPrefab: {fileID: 0}
   dustEffectPrefab: {fileID: 187952, guid: 841c1fd4e90f9f042a15fa258e9ea984, type: 3}
 --- !u!1001 &5731097970028884545
@@ -10636,8 +10585,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1825f86dea544914296c3a790cca8549, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  targetMassLevel: 15
-  maxDamagePenalty: 0.8
+  targetMassLevel: 18
+  maxDamagePenalty: 1
   fracturedPrefab: {fileID: 0}
   dustEffectPrefab: {fileID: 187952, guid: 841c1fd4e90f9f042a15fa258e9ea984, type: 3}
 --- !u!1001 &6553324355420173999
@@ -11670,8 +11619,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1825f86dea544914296c3a790cca8549, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  targetMassLevel: 15
-  maxDamagePenalty: 0.8
+  targetMassLevel: 19
+  maxDamagePenalty: 1
   fracturedPrefab: {fileID: 0}
   dustEffectPrefab: {fileID: 187952, guid: 841c1fd4e90f9f042a15fa258e9ea984, type: 3}
 --- !u!4 &7865692490730923060 stripped
@@ -11778,8 +11727,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1825f86dea544914296c3a790cca8549, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  targetMassLevel: 15
-  maxDamagePenalty: 0.8
+  targetMassLevel: 19
+  maxDamagePenalty: 1
   fracturedPrefab: {fileID: 0}
   dustEffectPrefab: {fileID: 187952, guid: 841c1fd4e90f9f042a15fa258e9ea984, type: 3}
 --- !u!1001 &8161707768930305556
@@ -11882,8 +11831,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1825f86dea544914296c3a790cca8549, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  targetMassLevel: 15
-  maxDamagePenalty: 0.8
+  targetMassLevel: 19
+  maxDamagePenalty: 1
   fracturedPrefab: {fileID: 0}
   dustEffectPrefab: {fileID: 187952, guid: 841c1fd4e90f9f042a15fa258e9ea984, type: 3}
 --- !u!4 &8161707768930442384 stripped
@@ -12415,8 +12364,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1825f86dea544914296c3a790cca8549, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  targetMassLevel: 15
-  maxDamagePenalty: 0.8
+  targetMassLevel: 19
+  maxDamagePenalty: 1
   fracturedPrefab: {fileID: 0}
   dustEffectPrefab: {fileID: 187952, guid: 841c1fd4e90f9f042a15fa258e9ea984, type: 3}
 --- !u!4 &9152650560679702546 stripped

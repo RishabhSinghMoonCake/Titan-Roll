@@ -48,7 +48,6 @@ public class PlayerDataManager : MonoBehaviour
     public void AddGold(int gold)
     {
         data.gold += gold;
-        data.gold = 9999999999;
         Save();
     }
 
@@ -63,16 +62,20 @@ public class PlayerDataManager : MonoBehaviour
             "Greed" => data.greedLevel,
             _ => 1
         };
-
-        int baseCost = type switch
+        double upgradeCost = 1f;
+        switch(type)
         {
-            "Mass" => baseMassCost,
-            "Strength" => baseStrengthCost,
-            "Greed" => baseGreedCost,
-            _ => 100
-        };
-
-        return baseCost * Math.Pow(costGrowthFactor, level);
+            case "Mass":
+                upgradeCost = EconomyManager.Instance.GetMassCost(level);
+                break;
+            case "Strength":
+                upgradeCost = EconomyManager.Instance.GetStrengthCost(level);
+                break;
+            case "Greed":
+                upgradeCost = EconomyManager.Instance.GetIncomeCost(level);
+                break;
+        }
+        return upgradeCost;
     }
 
     public bool TryBuyUpgrade(string type)
