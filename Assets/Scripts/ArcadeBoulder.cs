@@ -118,6 +118,7 @@ public class ArcadeBoulder : MonoBehaviour
 
     public static ArcadeBoulder Instance { get; private set; }
 
+
     void Awake()
     {
         if (Instance == null) Instance = this;

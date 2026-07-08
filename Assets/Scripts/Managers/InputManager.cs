@@ -1,11 +1,11 @@
+using DG.Tweening; // Added for visual fading
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.EnhancedTouch;
 using Touch = UnityEngine.InputSystem.EnhancedTouch.Touch;
-using System.Collections.Generic;
-using DG.Tweening; // Added for visual fading
 
 public class InputManager : MonoBehaviour
 {
@@ -33,6 +33,13 @@ public class InputManager : MonoBehaviour
     [Header("Smoothness & Mass Physics")]
     public float baseSteeringSmoothness = 10f;
     public float massEffectWeight = 0.003f;
+
+    [Header("Tutorial Logic")]
+    public float timeBeforeTutorial = 2.0f;
+    private float _runTimer = 0f;
+    private bool _hasSteered = false;
+    private bool _tutorialTriggered = false;
+    private const string TutorialKey = "HasLearnedSteering";
 
     [HideInInspector] public float currentBoulderMass = 100f;
 
@@ -97,6 +104,7 @@ public class InputManager : MonoBehaviour
 
     private void Update()
     {
+        HandleTutorialTimer();
         float minPlayableSmoothness = 6.0f;
         float massPenalty = currentBoulderMass * massEffectWeight;
         float dynamicSmoothness = Mathf.Clamp(baseSteeringSmoothness - massPenalty, minPlayableSmoothness, baseSteeringSmoothness);
@@ -104,11 +112,53 @@ public class InputManager : MonoBehaviour
 
         float lerpFactor = 1f - Mathf.Exp(-dynamicSmoothness * Time.deltaTime);
         SteeringInput = Mathf.Lerp(SteeringInput, finalTarget, lerpFactor);
+        if(IsBoulderPlayable())
+        {
+            if (Mathf.Abs(_targetSteering) > 0.05f)
+            {
+                if (!_hasSteered)
+                {
+                    _hasSteered = true;
+                    // Mark as learned and save immediately
+                    PlayerPrefs.SetInt(TutorialKey, 1);
+                    PlayerPrefs.Save();
 
+                    
+                }
+            }
+        }
+        if(_isInteracting)
+        {
+            if (_tutorialTriggered && SteeringTutorialUI.Instance != null)
+                SteeringTutorialUI.Instance.HideTutorial();
+        }
         // If holding touch during a cutscene, gracefully fade joystick in the moment boulder launches
         if (_isInteracting && !_isJoystickVisible && IsBoulderPlayable())
         {
             ShowJoystick(_activeFinger.screenPosition);
+            
+
+        }
+    }
+
+    private void HandleTutorialTimer()
+    {
+        // If the player has already learned, do nothing
+        if (PlayerPrefs.GetInt(TutorialKey, 0) == 1) return;
+
+        // We only track steering once the boulder is actually playable (launched)
+        if (IsBoulderPlayable())
+        {
+            if (!_hasSteered && !_tutorialTriggered)
+            {
+                _runTimer += Time.deltaTime;
+                if (_runTimer >= timeBeforeTutorial)
+                {
+                    _tutorialTriggered = true;
+                    if (SteeringTutorialUI.Instance != null)
+                        SteeringTutorialUI.Instance.ShowTutorial();
+                }
+            }
         }
     }
 

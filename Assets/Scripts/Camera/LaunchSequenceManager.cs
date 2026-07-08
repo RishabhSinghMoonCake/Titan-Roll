@@ -60,6 +60,13 @@ public class LaunchSequenceManager : MonoBehaviour
     // --- NEW: Instant kill-switch flag to stop unintended launches ---
     private bool _isAborted = false;
 
+    // --- THE FIX 1: Dynamic Animator Property ---
+    // This guarantees we NEVER cache a destroyed animator if GameLevelManager swaps the skin!
+    private Animator CurrentAnimator
+    {
+        get { return skinManager != null ? skinManager.currentActiveAnimator : null; }
+    }
+
     private void Start()
     {
         InitializeNewRun();
@@ -98,7 +105,6 @@ public class LaunchSequenceManager : MonoBehaviour
             tapToPlayText.gameObject.SetActive(true);
         }
 
-        // --- NEW: LEVEL TEXT FADE IN ---
         if (LevelText != null)
         {
             int currentLevel = PlayerPrefs.GetInt("PrestigeLevel", 1);
@@ -122,26 +128,17 @@ public class LaunchSequenceManager : MonoBehaviour
 
     private IEnumerator StartRunAfterPrewarm()
     {
-        // This will only take ~5 frames on initial load, and 0 frames on quick retries!
         yield return StartCoroutine(PrewarmCamerasRoutine());
-
-        // Once cameras are warm, kick off the normal sequence
         yield return StartCoroutine(PreLaunchSequence());
     }
 
     private bool _camerasPrewarmed = false;
 
-    /// <summary>
-    /// Wakes up every Cinemachine camera for 1 frame so Unity caches shaders, LODs, shadows, and damping math.
-    /// </summary>
     private IEnumerator PrewarmCamerasRoutine()
     {
-        // Only run this heavy prewarm once per scene load!
         if (_camerasPrewarmed) yield break;
         _camerasPrewarmed = true;
 
-
-        // Put all cameras into an array for easy looping
         CinemachineVirtualCamera[] allCams = new CinemachineVirtualCamera[]
         {
             vcamIdle,
@@ -155,34 +152,23 @@ public class LaunchSequenceManager : MonoBehaviour
         {
             if (cam != null)
             {
-                // 1. Force this camera to be the highest priority
                 CutToCamera(cam);
-
-                // 2. Tell Cinemachine to instantly snap to its target without damping lag
                 cam.PreviousStateIsValid = false;
-
-                // 3. Wait 1 frame so Unity actually renders this view and caches shadows/materials
                 yield return null;
             }
         }
 
-        // Return to the starting Idle camera cleanly
         CutToCamera(vcamIdle);
         if (vcamIdle != null) vcamIdle.PreviousStateIsValid = false;
-
-        // Give the brain one final frame to settle
         yield return null;
-
     }
 
     private bool IsTouchOverUI(Vector2 screenPosition)
     {
         if (EventSystem.current == null) return false;
 
-        // 1. Check native Unity UI pointer (catches mouse and standard touch)
         if (EventSystem.current.IsPointerOverGameObject()) return true;
 
-        // 2. Explicitly check active mobile touch IDs
         if (UnityEngine.InputSystem.EnhancedTouch.Touch.activeTouches.Count > 0)
         {
             foreach (var touch in UnityEngine.InputSystem.EnhancedTouch.Touch.activeTouches)
@@ -192,7 +178,6 @@ public class LaunchSequenceManager : MonoBehaviour
             }
         }
 
-        // 3. Fallback to RaycastAll
         PointerEventData eventData = new PointerEventData(EventSystem.current) { position = screenPosition };
         List<RaycastResult> results = new List<RaycastResult>();
         EventSystem.current.RaycastAll(eventData, results);
@@ -201,99 +186,107 @@ public class LaunchSequenceManager : MonoBehaviour
 
     private IEnumerator PreLaunchSequence()
     {
-        if (timingMinigamePanel) timingMinigamePanel.SetActive(false);  
-        AlignCharacterToBoulder();  
+        if (timingMinigamePanel) timingMinigamePanel.SetActive(false);
+        AlignCharacterToBoulder();
 
-        var animator = skinManager.currentActiveAnimator;  
-
-        // --- CHECK IF THIS IS THE VERY FIRST TIME PLAYING ---
         bool isFirstTimeBoot = PlayerPrefs.GetInt("HasPlayedBefore", 0) == 0;
 
         if (isFirstTimeBoot)
         {
-            // 1. Mark that they have now played, so subsequent runs start at Idle
             PlayerPrefs.SetInt("HasPlayedBefore", 1);
             PlayerPrefs.Save();
 
-            // 2. Hide starting UI immediately
-            if (upgradePanel != null) upgradePanel.SetActive(false);  
-            if (tapToPlayText != null) tapToPlayText.gameObject.SetActive(false);  
-            if (LevelText != null) LevelText.gameObject.SetActive(false);  
-            if(backButtonCanvasGroup != null) backButtonCanvasGroup.gameObject.SetActive(false);
+            if (upgradePanel != null) upgradePanel.SetActive(false);
+            if (tapToPlayText != null) tapToPlayText.gameObject.SetActive(false);
+            if (LevelText != null) LevelText.gameObject.SetActive(false);
+            if (backButtonCanvasGroup != null) backButtonCanvasGroup.gameObject.SetActive(false);
 
-            // 3. Instantly snap weapon to hand without the 0.5s animation wait
             if (skinManager != null && skinManager.giantWeaponInScene != null && skinManager.currentWeaponSocket != null)
             {
-                Transform weapon = skinManager.giantWeaponInScene;  
-                Transform socket = skinManager.currentWeaponSocket;  
-                weapon.SetParent(socket);  
-                weapon.localPosition = Vector3.zero;  
-                weapon.localRotation = Quaternion.identity;  
+                Transform weapon = skinManager.giantWeaponInScene;
+                Transform socket = skinManager.currentWeaponSocket;
+                weapon.SetParent(socket);
+                weapon.localPosition = Vector3.zero;
+                weapon.localRotation = Quaternion.identity;
             }
 
-            if (animator != null) animator.SetTrigger("StartMinigame");  
+            if (CurrentAnimator != null)
+            {
+                CurrentAnimator.ResetTrigger("Release");
+                CurrentAnimator.SetBool("IsHolding", false);
+                CurrentAnimator.SetTrigger("StartMinigame");
+            }
+
+            yield return new WaitForSeconds(0.6f);
         }
         else
         {
             // --- NORMAL PLAYTHROUGH: START AT IDLE ---
             CutToCamera(vcamIdle);
 
-            // THE FIX: Ignore touch inputs for 0.4s after boot so scene reloads don't auto-start!
             float safeStartTime = Time.time + 0.4f;
-            //PHASE 1
             bool waitingForStart = true;
             while (waitingForStart)
             {
                 if (Time.time >= safeStartTime && Touch.activeTouches.Count > 0)
                 {
                     var touch = Touch.activeTouches[0];
-                    if (touch.phase == UnityEngine.InputSystem.TouchPhase.Began)
+                    // Accept Began, Moved, or Stationary so tap & holds are not ignored
+                    if (touch.phase == UnityEngine.InputSystem.TouchPhase.Began ||
+                        touch.phase == UnityEngine.InputSystem.TouchPhase.Moved ||
+                        touch.phase == UnityEngine.InputSystem.TouchPhase.Stationary)
                     {
                         if (!IsTouchOverUI(touch.screenPosition))
                         {
-                            waitingForStart = false; // Player clicked to start! 
+                            waitingForStart = false;
                         }
                     }
                 }
                 yield return null;
             }
 
-            if (upgradePanel != null && upgradePanel.activeSelf)  
+            if (upgradePanel != null && upgradePanel.activeSelf)
             {
-                upgradePanel.transform.DOKill();  
-                upgradePanel.transform.DOScale(Vector3.zero, 0.25f) 
-                    .SetEase(Ease.InBack) 
-                    .OnComplete(() => upgradePanel.SetActive(false));  
+                upgradePanel.transform.DOKill();
+                upgradePanel.transform.DOScale(Vector3.zero, 0.25f)
+                    .SetEase(Ease.InBack)
+                    .OnComplete(() => upgradePanel.SetActive(false));
             }
 
-            if (tapToPlayText != null && tapToPlayText.gameObject.activeSelf)  
+            if (tapToPlayText != null && tapToPlayText.gameObject.activeSelf)
             {
-                tapToPlayText.transform.DOKill();  
-                tapToPlayText.transform.DOScale(Vector3.zero, 0.25f) 
-                    .SetEase(Ease.InBack) 
-                    .OnComplete(() => tapToPlayText.gameObject.SetActive(false));  
+                tapToPlayText.transform.DOKill();
+                tapToPlayText.transform.DOScale(Vector3.zero, 0.25f)
+                    .SetEase(Ease.InBack)
+                    .OnComplete(() => tapToPlayText.gameObject.SetActive(false));
             }
 
-            if (LevelText != null && LevelText.gameObject.activeSelf)  
+            if (LevelText != null && LevelText.gameObject.activeSelf)
             {
-                LevelText.transform.DOKill();  
-                LevelText.DOFade(0f, 0.2f);  
-                LevelText.transform.DOScale(Vector3.zero, 0.25f) 
-                    .SetEase(Ease.InBack) 
-                    .OnComplete(() => LevelText.gameObject.SetActive(false));  
+                LevelText.transform.DOKill();
+                LevelText.DOFade(0f, 0.2f);
+                LevelText.transform.DOScale(Vector3.zero, 0.25f)
+                    .SetEase(Ease.InBack)
+                    .OnComplete(() => LevelText.gameObject.SetActive(false));
             }
 
-            // PHASE 2: FLY WEAPON TO HAND
-            yield return StartCoroutine(FlyWeaponToHand());  
+            yield return StartCoroutine(FlyWeaponToHand());
 
-            if (animator != null) animator.SetTrigger("StartMinigame");  
-            yield return new WaitForSeconds(0.5f);  
+            if (CurrentAnimator != null)
+            {
+                CurrentAnimator.ResetTrigger("Release");
+                CurrentAnimator.SetBool("IsHolding", false);
+                CurrentAnimator.SetTrigger("StartMinigame");
+            }
+
+            // Reduced wait time for a snappier transition!
+            yield return new WaitForSeconds(0.3f);
         }
 
         // --- PHASE 3: DRAG MINIGAME INITIALIZATION ---
-        CutToCamera(vcamMinigame);  
+        CutToCamera(vcamMinigame);
 
-        if (timingMinigamePanel) timingMinigamePanel.SetActive(true);  
+        if (timingMinigamePanel) timingMinigamePanel.SetActive(true);
         if (timingSlider) timingSlider.value = 0f;
 
         if (backButtonCanvasGroup != null)
@@ -304,38 +297,45 @@ public class LaunchSequenceManager : MonoBehaviour
             backButtonCanvasGroup.DOFade(1f, backButtonFadeDuration);
         }
 
-        if (powerPercentageText != null)  
+        if (powerPercentageText != null)
         {
-            powerPercentageText.gameObject.SetActive(true);  
-            powerPercentageText.text = "0%";  
+            powerPercentageText.gameObject.SetActive(true);
+            powerPercentageText.text = "0%";
         }
 
-        if (handTutorialUI != null) handTutorialUI.PlayTutorial();  
+        if (handTutorialUI != null) handTutorialUI.PlayTutorial();
 
-        bool isDragging = false;  
-        Vector2 startTouchPos = Vector2.zero;  
+        bool isDragging = false;
+        Vector2 startTouchPos = Vector2.zero;
         float dpiScale = Screen.dpi > 0 ? Screen.dpi / 160f : Screen.height / 1080f;
         float actualMaxDrag = Mathf.Max(10f, maxDragPixels * dpiScale);
-        float safeInputTime = Time.time + inputDeadZoneDelay;  
-        UnityEngine.InputSystem.EnhancedTouch.Finger activeFinger = null;  
 
-        while (true)  
+        // Force a tiny 0.1s deadzone instead of 0.4s to prevent laggy input tracking
+        float safeInputTime = Time.time + 0.1f;
+        UnityEngine.InputSystem.EnhancedTouch.Finger activeFinger = null;
+
+        while (true)
         {
             if (_isAborted) yield break;
-            if (Time.time >= safeInputTime)  
-            {
-                var touches = Touch.activeTouches;  
 
-                if (!isDragging && touches.Count > 0)  
+            if (Time.time >= safeInputTime)
+            {
+                var touches = Touch.activeTouches;
+
+                if (!isDragging && touches.Count > 0)
                 {
-                    foreach (var touch in touches)  
+                    foreach (var touch in touches)
                     {
-                        if (touch.phase == UnityEngine.InputSystem.TouchPhase.Began)  
+                        // Accept Began, Moved, AND Stationary! 
+                        // If the player starts swiping before the camera arrives, we instantly grab it here!
+                        if (touch.phase == UnityEngine.InputSystem.TouchPhase.Began ||
+                            touch.phase == UnityEngine.InputSystem.TouchPhase.Moved ||
+                            touch.phase == UnityEngine.InputSystem.TouchPhase.Stationary)
                         {
                             if (IsTouchOverUI(touch.screenPosition)) continue;
 
-                            isDragging = true;  
-                            activeFinger = touch.finger;  
+                            isDragging = true;
+                            activeFinger = touch.finger;
                             startTouchPos = touch.screenPosition;
 
                             if (backButtonCanvasGroup != null)
@@ -344,82 +344,90 @@ public class LaunchSequenceManager : MonoBehaviour
                                 backButtonCanvasGroup.DOFade(0f, backButtonFadeDuration);
                             }
 
-                            if (handTutorialUI != null) handTutorialUI.StopTutorial();  
-                            if (animator != null) animator.SetBool("IsHolding", true);  
-                            break;  
+                            if (handTutorialUI != null) handTutorialUI.StopTutorial();
+
+                            if (CurrentAnimator != null) CurrentAnimator.SetBool("IsHolding", true);
+                            break;
                         }
                     }
                 }
-                else if (isDragging && activeFinger != null)  
+                else if (isDragging && activeFinger != null)
                 {
-                    bool fingerStillOnScreen = false;  
-                    foreach (var touch in touches)  
+                    bool fingerStillOnScreen = false;
+                    foreach (var touch in touches)
                     {
-                        if (touch.finger == activeFinger)  
+                        if (touch.finger == activeFinger)
                         {
-                            fingerStillOnScreen = true;  
-                            if (touch.phase == UnityEngine.InputSystem.TouchPhase.Moved ||  
-                                touch.phase == UnityEngine.InputSystem.TouchPhase.Stationary) 
+                            fingerStillOnScreen = true;
+                            if (touch.phase == UnityEngine.InputSystem.TouchPhase.Moved ||
+                                touch.phase == UnityEngine.InputSystem.TouchPhase.Stationary)
                             {
-                                float dragDistY = startTouchPos.y - touch.screenPosition.y;  
-                                targetDragPower = Mathf.Clamp01(dragDistY / actualMaxDrag);  
+                                float dragDistY = startTouchPos.y - touch.screenPosition.y;
+                                targetDragPower = Mathf.Clamp01(dragDistY / actualMaxDrag);
                             }
-                            else if (touch.phase == UnityEngine.InputSystem.TouchPhase.Ended ||  
-                                     touch.phase == UnityEngine.InputSystem.TouchPhase.Canceled) 
+                            else if (touch.phase == UnityEngine.InputSystem.TouchPhase.Ended ||
+                                     touch.phase == UnityEngine.InputSystem.TouchPhase.Canceled)
                             {
-                                isDragging = false;  
+                                isDragging = false;
                             }
-                            break;  
+                            break;
                         }
                     }
-                    if (!fingerStillOnScreen || !isDragging) break;  
+                    if (!fingerStillOnScreen || !isDragging) break;
                 }
             }
 
-            smoothedDragPower = Mathf.SmoothDamp(smoothedDragPower, targetDragPower, ref velocity, 0.08f);  
-            if (animator != null) animator.SetFloat("WindupPower", smoothedDragPower);  
-            if (timingSlider) timingSlider.value = smoothedDragPower;  
+            // --- THE FIX: Eliminate Input Lag & Desync ---
+            // Changed from slow SmoothDamp to a high-speed Lerp (30f) to instantly lock the visual to the finger.
+            smoothedDragPower = Mathf.Lerp(smoothedDragPower, targetDragPower, Time.deltaTime * 30f);
 
-            if (powerPercentageText != null)  
+            if (CurrentAnimator != null) CurrentAnimator.SetFloat("WindupPower", smoothedDragPower);
+
+            if (timingSlider) timingSlider.value = smoothedDragPower;
+
+            if (powerPercentageText != null)
             {
-                int percent = Mathf.RoundToInt(Mathf.Clamp01(smoothedDragPower) * 100f);  
-                powerPercentageText.text = $"{percent}%";  
+                int percent = Mathf.RoundToInt(Mathf.Clamp01(smoothedDragPower) * 100f);
+                powerPercentageText.text = $"{percent}%";
             }
 
-            if (skinManager.giantWeaponInScene != null)  
+            if (skinManager.giantWeaponInScene != null)
             {
-                if (smoothedDragPower > 0.95f)  
+                if (smoothedDragPower > 0.95f)
                 {
-                    skinManager.giantWeaponInScene.localRotation = Quaternion.Euler( 
-                        Random.Range(-3f, 3f), Random.Range(-3f, 3f), Random.Range(-3f, 3f));  
+                    skinManager.giantWeaponInScene.localRotation = Quaternion.Euler(
+                        Random.Range(-3f, 3f), Random.Range(-3f, 3f), Random.Range(-3f, 3f));
                 }
-                else  
+                else
                 {
-                    skinManager.giantWeaponInScene.localRotation = Quaternion.identity;  
+                    skinManager.giantWeaponInScene.localRotation = Quaternion.identity;
                 }
             }
-            yield return null;  
+            yield return null;
         }
-        if (_isAborted) yield break;
-        if (timingMinigamePanel) timingMinigamePanel.SetActive(false);  
-        if (powerPercentageText != null) powerPercentageText.gameObject.SetActive(false);  
 
-        if (skinManager.giantWeaponInScene != null)  
+        if (_isAborted) yield break;
+
+        // --- NEW: Snap to raw input on release! ---
+        // If the player swipes super fast and releases, this guarantees the launch logic 
+        // uses their EXACT raw finger position, eliminating launch power desyncs.
+        smoothedDragPower = targetDragPower;
+
+        if (timingMinigamePanel) timingMinigamePanel.SetActive(false);
+        if (powerPercentageText != null) powerPercentageText.gameObject.SetActive(false);
+
+        if (skinManager.giantWeaponInScene != null)
             skinManager.giantWeaponInScene.localRotation = Quaternion.identity;
 
         bool isMaxPower = smoothedDragPower >= 0.99f;
 
-        if (animator != null)
+        if (CurrentAnimator != null)
         {
-            animator.SetBool("IsHolding", false);
+            CurrentAnimator.SetBool("IsHolding", false);
 
             if (isMaxPower)
             {
-                // 1. 50% FASTER SLOW-MO: Increased from 0.35f to 0.70f speed!
                 Time.timeScale = 0.7f;
-
-
-
                 yield return new WaitForSecondsRealtime(0.05f);
             }
             else
@@ -427,20 +435,17 @@ public class LaunchSequenceManager : MonoBehaviour
                 yield return new WaitForSeconds(0.05f);
             }
 
-            animator.SetTrigger("Release");
+            CurrentAnimator.SetTrigger("Release");
         }
+
         if (_isAborted) yield break;
+
         if (isMaxPower)
         {
-            // --- 100% POWER CRITICAL HIT SEQUENCE ---
-
-            // Wait for the arm animation to reach the boulder (now 50% faster!)
             yield return new WaitForSeconds(impactDelayAfterRelease);
 
-            // 2. 3-4 FRAME SKIP HIT-STOP: Freeze time almost completely
             Time.timeScale = 0.01f;
 
-            // 3. EXACT CONTACT POINT SPAWN
             if (hitParticlePrefab != null && skinManager != null && skinManager.currentWeaponSocket != null)
             {
                 Vector3 handPos = skinManager.currentWeaponSocket.position;
@@ -451,9 +456,7 @@ public class LaunchSequenceManager : MonoBehaviour
                     Collider boulderCol = boulder.GetComponent<Collider>();
                     if (boulderCol != null)
                     {
-                        // Get the exact impact point on the boulder's physical surface
                         Vector3 boulderSurface = boulderCol.ClosestPoint(handPos);
-                        // Place particle directly between the hand and the boulder surface!
                         spawnPos = Vector3.Lerp(handPos, boulderSurface, 0.5f);
                     }
                     else
@@ -462,57 +465,37 @@ public class LaunchSequenceManager : MonoBehaviour
                     }
                 }
 
-                if (ObjectPooler.Instance != null)
-                {
-                    ObjectPooler.Instance.Spawn(hitParticlePrefab, spawnPos, Quaternion.identity);
-                }
-                else
-                {
-                    Instantiate(hitParticlePrefab, spawnPos, Quaternion.identity);
-                }
+                if (ObjectPooler.Instance != null) ObjectPooler.Instance.Spawn(hitParticlePrefab, spawnPos, Quaternion.identity);
+                else Instantiate(hitParticlePrefab, spawnPos, Quaternion.identity);
             }
 
-            // --- TRIGGER EPIC SHAKE ON MAX POWER LAUNCH ---
-            if (CustomCameraShaker.Instance != null)
-            {
-                CustomCameraShaker.Instance.Shake(ShakeType.Epic);
-            }
+            if (CustomCameraShaker.Instance != null) CustomCameraShaker.Instance.Shake(ShakeType.Epic);
 
-            // Hold the freeze for exactly 4 frames at 60 FPS (~0.066 real seconds)
             yield return new WaitForSecondsRealtime(4f / 60f);
 
-            // Snap time back to normal speed for the launch
             Time.timeScale = 1.0f;
         }
         else
         {
-            // --- STANDARD LAUNCH (< 100% POWER) ---
-
-
             yield return new WaitForSeconds(impactDelayAfterRelease);
-            // --- TRIGGER STANDARD SHAKE FOR NORMAL LAUNCHES ---
-            if (CustomCameraShaker.Instance != null)
-            {
-                CustomCameraShaker.Instance.Shake(ShakeType.Short);
-            }
+            if (CustomCameraShaker.Instance != null) CustomCameraShaker.Instance.Shake(ShakeType.Short);
         }
+
         if (_isAborted) yield break;
+
         CutToCamera(vcamFollow);
 
-
-        float clampedPower = Mathf.Clamp01(smoothedDragPower);  
-        float baseLaunchSpeed = GameLevelManager.Instance.GetTotalLaunchSpeed();  
-        float finalPower = Mathf.Pow(clampedPower, 1.5f);  
-        float finalSpeed = Mathf.Lerp(baseLaunchSpeed * 0.25f, baseLaunchSpeed, finalPower);  
+        float clampedPower = Mathf.Clamp01(smoothedDragPower);
+        float baseLaunchSpeed = GameLevelManager.Instance.GetTotalLaunchSpeed();
+        float finalPower = Mathf.Pow(clampedPower, 1.5f);
+        float finalSpeed = Mathf.Lerp(baseLaunchSpeed * 0.25f, baseLaunchSpeed, finalPower);
 
         FindObjectOfType<DynamicBoulderCamera>()?.TriggerLaunchSequence();
 
-        if (float.IsNaN(finalSpeed) || float.IsInfinity(finalSpeed) || finalSpeed <= 0f)
-        {
-            finalSpeed = 60f;
-        }
-        boulder.Launch(finalSpeed);  
-        GameLevelManager.Instance.SetStateToLaunched();  
+        if (float.IsNaN(finalSpeed) || float.IsInfinity(finalSpeed) || finalSpeed <= 0f) finalSpeed = 60f;
+
+        boulder.Launch(finalSpeed);
+        GameLevelManager.Instance.SetStateToLaunched();
     }
 
     private IEnumerator FlyWeaponToHand()
@@ -524,9 +507,11 @@ public class LaunchSequenceManager : MonoBehaviour
 
         weapon.DOKill();
         weapon.SetParent(null);
-        weapon.DOMove(socket.position, 0.5f).SetEase(Ease.InOutSine);
-        weapon.DORotateQuaternion(socket.rotation, 0.5f).SetEase(Ease.InOutSine);
-        yield return new WaitForSeconds(0.5f);
+
+        // Sped up to make the start of a run feel radically faster
+        weapon.DOMove(socket.position, 0.3f).SetEase(Ease.OutQuad);
+        weapon.DORotateQuaternion(socket.rotation, 0.3f).SetEase(Ease.OutQuad);
+        yield return new WaitForSeconds(0.3f);
 
         weapon.SetParent(socket);
         weapon.localPosition = Vector3.zero;
@@ -545,22 +530,16 @@ public class LaunchSequenceManager : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Hook this public method directly to your UI Back Button's OnClick event in the Inspector!
-    /// </summary>
     public void OnBackButtonPressed()
     {
         _isAborted = true;
-        // 1. Instantly kill the minigame while(true) loop so no lingering touches trigger a launch!
         StopAllCoroutines();
-        // 1. Immediately prevent double-clicking the button
         if (backButtonCanvasGroup != null)
         {
             backButtonCanvasGroup.blocksRaycasts = false;
             backButtonCanvasGroup.interactable = false;
         }
 
-        // 2. Start the smooth reload sequence
         StartCoroutine(SmoothReloadRoutine());
     }
 
@@ -568,7 +547,6 @@ public class LaunchSequenceManager : MonoBehaviour
     {
         Time.timeScale = 1.0f;
 
-        // 2. Lock boulder physics instantly so it cannot fall or trigger Game Over
         if (boulder != null)
         {
             var rb = boulder.GetComponent<Rigidbody>();
@@ -580,7 +558,6 @@ public class LaunchSequenceManager : MonoBehaviour
             }
         }
 
-        // 3. Fade out UI
         if (backButtonCanvasGroup != null) backButtonCanvasGroup.DOFade(0f, 0.3f);
         if (powerPercentageText != null) powerPercentageText.DOFade(0f, 0.2f);
         if (handTutorialUI != null) handTutorialUI.StopTutorial();
@@ -622,7 +599,6 @@ public class LaunchSequenceManager : MonoBehaviour
         charRoot.position = new Vector3(charRoot.position.x, charRoot.position.y, z);
     }
 
-    // --- NEW: Caching structures for dynamic camera scaling ---
     private struct CamDefaultData
     {
         public bool isCached;
@@ -632,9 +608,6 @@ public class LaunchSequenceManager : MonoBehaviour
     private CamDefaultData _minigameCamData;
     private CamDefaultData _closeUpCamData;
 
-    /// <summary>
-    /// Scales the minigame and close-up camera distances proportionally to the boulder's physical size.
-    /// </summary>
     public void UpdateCameraScales(float boulderScale)
     {
         ScaleVirtualCamera(vcamMinigame, ref _minigameCamData, boulderScale);
@@ -645,7 +618,6 @@ public class LaunchSequenceManager : MonoBehaviour
     {
         if (vcam == null) return;
 
-        // 1. Automatically cache the original Level 1 defaults the first time this runs
         if (!data.isCached)
         {
             var t = vcam.GetCinemachineComponent<CinemachineTransposer>();
@@ -660,7 +632,6 @@ public class LaunchSequenceManager : MonoBehaviour
             data.isCached = true;
         }
 
-        // 2. Multiply the offset/distance by the boulder's current scale
         var transposer = vcam.GetCinemachineComponent<CinemachineTransposer>();
         if (transposer != null) transposer.m_FollowOffset = data.offset * Mathf.Sqrt(scale);
 
