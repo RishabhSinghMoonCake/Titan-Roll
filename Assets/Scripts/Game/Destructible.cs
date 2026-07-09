@@ -18,6 +18,16 @@ public class Destructible : MonoBehaviour
     private float _linearFactor = 0.4f;
     private bool _isBroken = false;
 
+    private enum DestructibleType
+    {
+        Wall,
+        Rock,
+        Tree,
+        Other
+    }
+
+    [SerializeField] private DestructibleType destructibleType = DestructibleType.Tree;
+
     void OnTriggerEnter(Collider other)
     {
         if (_isBroken) return;  
@@ -96,56 +106,73 @@ public class Destructible : MonoBehaviour
         // 3. Get the raw speed magnitude to determine how hard we hit it 
         float impactSpeed = playerVelocity.magnitude;  
 
-        if (fracturedPrefab != null)  
+        if(destructibleType == DestructibleType.Tree)
         {
-            // PATH A: Fractured Prefab 
-            GameObject brokenObj = ObjectPooler.Instance.Spawn(fracturedPrefab, transform.position, transform.rotation);  
-
-            Rigidbody[] pieces = brokenObj.GetComponentsInChildren<Rigidbody>();  
-            foreach (Rigidbody pieceRb in pieces)  
-            {
-                // Push the debris along the 45-degree arc, matching the boulder's speed 
-                pieceRb.velocity = launchDir45 * (impactSpeed * 0.7f);  
-
-                // Add a small explosion just to scatter the pieces away from each other 
-                pieceRb.AddExplosionForce(200f, hitPoint, 5f);  
-            }
-
-            DebrisFader fader = brokenObj.GetComponent<DebrisFader>();  
-            if (fader == null) fader = brokenObj.AddComponent<DebrisFader>();  
-            fader.BeginFade();  
-
-            Destroy(gameObject);  
+            AudioManager.Instance?.Play("TreeHit");
+        }
+        else if(destructibleType == DestructibleType.Rock)
+        {
+            AudioManager.Instance?.Play("RockHit");
+        }
+        else if(destructibleType == DestructibleType.Wall)
+        {
+            AudioManager.Instance?.Play("WallHit");
         }
         else
         {
-            Rigidbody myRb = GetComponent<Rigidbody>();  
+            AudioManager.Instance?.Play("GenericHit");
+        }
 
-            if (myRb != null)  
+        if (fracturedPrefab != null)
+        {
+            // PATH A: Fractured Prefab 
+            GameObject brokenObj = ObjectPooler.Instance.Spawn(fracturedPrefab, transform.position, transform.rotation);
+
+            Rigidbody[] pieces = brokenObj.GetComponentsInChildren<Rigidbody>();
+            foreach (Rigidbody pieceRb in pieces)
+            {
+                // Push the debris along the 45-degree arc, matching the boulder's speed 
+                pieceRb.velocity = launchDir45 * (impactSpeed * 0.7f);
+
+                // Add a small explosion just to scatter the pieces away from each other 
+                pieceRb.AddExplosionForce(200f, hitPoint, 5f);
+            }
+
+            DebrisFader fader = brokenObj.GetComponent<DebrisFader>();
+            if (fader == null) fader = brokenObj.AddComponent<DebrisFader>();
+            fader.BeginFade();
+
+            Destroy(gameObject);
+        }
+        else
+        {
+            Rigidbody myRb = GetComponent<Rigidbody>();
+
+            if (myRb != null)
             {
                 // PATH B: Dynamic Rigidbody Punt 
-                myRb.isKinematic = false;  
+                myRb.isKinematic = false;
 
                 // Launch the object exactly 45 degrees into the sky based on impact speed 
                 // We use Mathf.Max to guarantee at least a 15m/s punt even if the boulder is rolling slowly 
-                float puntForce = Mathf.Max(impactSpeed * 0.8f, 15f);  
-                myRb.AddForce(launchDir45 * puntForce, ForceMode.VelocityChange);  
+                float puntForce = Mathf.Max(impactSpeed * 0.8f, 15f);
+                myRb.AddForce(launchDir45 * puntForce, ForceMode.VelocityChange);
 
-                myRb.AddTorque(Random.insideUnitSphere * 500f, ForceMode.Impulse);  
+                myRb.AddTorque(Random.insideUnitSphere * 250f, ForceMode.Impulse);
 
-                Collider[] colliders = GetComponentsInChildren<Collider>();  
-                foreach (Collider col in colliders) col.enabled = false;  
+                Collider[] colliders = GetComponentsInChildren<Collider>();
+                foreach (Collider col in colliders) col.enabled = false;
 
-                DebrisFader fader = GetComponent<DebrisFader>();  
-                if (fader == null) fader = gameObject.AddComponent<DebrisFader>();  
-                fader.BeginFade();  
+                DebrisFader fader = GetComponent<DebrisFader>();
+                if (fader == null) fader = gameObject.AddComponent<DebrisFader>();
+                fader.BeginFade();
 
-                Destroy(gameObject, 2.5f);  
+                Destroy(gameObject, 2.5f);
             }
             else
             {
                 // PATH C: Insta-Destroy 
-                Destroy(gameObject);  
+                Destroy(gameObject);
             }
         }
     }

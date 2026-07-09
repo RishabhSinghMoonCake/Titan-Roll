@@ -105,11 +105,11 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 5c2e7e2c205ec7f4d8116c2cd29e1a53,
         type: 3}
       insertIndex: -1
-      addedObject: {fileID: 971729501055065825}
+      addedObject: {fileID: -7972776527764171765}
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 5c2e7e2c205ec7f4d8116c2cd29e1a53,
         type: 3}
       insertIndex: -1
-      addedObject: {fileID: -7972776527764171765}
+      addedObject: {fileID: 5503326469862907449}
   m_SourcePrefab: {fileID: 100100000, guid: 5c2e7e2c205ec7f4d8116c2cd29e1a53, type: 3}
 --- !u!1 &7123209545155523296 stripped
 GameObject:
@@ -117,8 +117,21 @@ GameObject:
     type: 3}
   m_PrefabInstance: {fileID: 7934164445233123249}
   m_PrefabAsset: {fileID: 0}
---- !u!136 &971729501055065825
-CapsuleCollider:
+--- !u!114 &-7972776527764171765
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7123209545155523296}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8bab058eff897f14bb3f37454775989b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  dustEffectPrefab: {fileID: 0}
+--- !u!65 &5503326469862907449
+BoxCollider:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -135,21 +148,6 @@ CapsuleCollider:
   m_IsTrigger: 1
   m_ProvidesContacts: 0
   m_Enabled: 1
-  serializedVersion: 2
-  m_Radius: 0.15
-  m_Height: 0.548118
-  m_Direction: 1
+  serializedVersion: 3
+  m_Size: {x: 0.247759, y: 0.548118, z: 0.26087293}
   m_Center: {x: 0.007447742, y: 0.27259982, z: -0.022496898}
---- !u!114 &-7972776527764171765
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7123209545155523296}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 8bab058eff897f14bb3f37454775989b, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  dustEffectPrefab: {fileID: 0}

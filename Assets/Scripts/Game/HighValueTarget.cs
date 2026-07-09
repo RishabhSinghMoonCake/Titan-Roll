@@ -110,7 +110,7 @@ public class HighValueTarget : MonoBehaviour
                 Instantiate(collectionEffectPrefab, transform.position, Quaternion.identity);
             }
         }
-
+        AudioManager.Instance?.Play("Coin Collected");
         // THE FIX: Removed transform.parent destruction entirely.
         // It now strictly destroys ONLY this target object!
         Destroy(gameObject);

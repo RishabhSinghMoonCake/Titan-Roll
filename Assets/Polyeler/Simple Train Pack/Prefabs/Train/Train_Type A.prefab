@@ -327,6 +327,7 @@ MonoBehaviour:
   fracturedPrefab: {fileID: 0}
   dustEffectPrefab: {fileID: 1952076019714368, guid: d42852d7985301b42a647ff270d3d088,
     type: 3}
+  destructibleType: 3
 --- !u!1 &398871287601411184
 GameObject:
   m_ObjectHideFlags: 0
@@ -1468,6 +1469,7 @@ MonoBehaviour:
   fracturedPrefab: {fileID: 0}
   dustEffectPrefab: {fileID: 1952076019714368, guid: d42852d7985301b42a647ff270d3d088,
     type: 3}
+  destructibleType: 3
 --- !u!1 &2012173282559192349
 GameObject:
   m_ObjectHideFlags: 0
@@ -2428,6 +2430,7 @@ MonoBehaviour:
   fracturedPrefab: {fileID: 0}
   dustEffectPrefab: {fileID: 1952076019714368, guid: d42852d7985301b42a647ff270d3d088,
     type: 3}
+  destructibleType: 3
 --- !u!1 &3200343257353131593
 GameObject:
   m_ObjectHideFlags: 0
@@ -2802,6 +2805,7 @@ MonoBehaviour:
   fracturedPrefab: {fileID: 0}
   dustEffectPrefab: {fileID: 1952076019714368, guid: d42852d7985301b42a647ff270d3d088,
     type: 3}
+  destructibleType: 3
 --- !u!1 &3453162146587840095
 GameObject:
   m_ObjectHideFlags: 0
@@ -3444,6 +3448,7 @@ MonoBehaviour:
   fracturedPrefab: {fileID: 0}
   dustEffectPrefab: {fileID: 1952076019714368, guid: d42852d7985301b42a647ff270d3d088,
     type: 3}
+  destructibleType: 3
 --- !u!1 &5033659961586758309
 GameObject:
   m_ObjectHideFlags: 0
@@ -4153,6 +4158,7 @@ MonoBehaviour:
   fracturedPrefab: {fileID: 0}
   dustEffectPrefab: {fileID: 1952076019714368, guid: d42852d7985301b42a647ff270d3d088,
     type: 3}
+  destructibleType: 3
 --- !u!1 &6501873329914719933
 GameObject:
   m_ObjectHideFlags: 0

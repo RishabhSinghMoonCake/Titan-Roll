@@ -316,7 +316,11 @@ public class LaunchSequenceManager : MonoBehaviour
 
         while (true)
         {
-            if (_isAborted) yield break;
+            if (_isAborted) 
+            {
+                if (AudioManager.Instance != null) AudioManager.Instance.Stop("Stretch");
+                yield break; 
+            }
 
             if (Time.time >= safeInputTime)
             {
@@ -337,6 +341,8 @@ public class LaunchSequenceManager : MonoBehaviour
                             isDragging = true;
                             activeFinger = touch.finger;
                             startTouchPos = touch.screenPosition;
+
+                            if (AudioManager.Instance != null) AudioManager.Instance.Play("Stretch");
 
                             if (backButtonCanvasGroup != null)
                             {
@@ -381,6 +387,13 @@ public class LaunchSequenceManager : MonoBehaviour
             // Changed from slow SmoothDamp to a high-speed Lerp (30f) to instantly lock the visual to the finger.
             smoothedDragPower = Mathf.Lerp(smoothedDragPower, targetDragPower, Time.deltaTime * 30f);
 
+            if (isDragging && AudioManager.Instance != null)
+            {
+                // Maps 0% -> 100% power to a pitch range of 0.8 -> 1.5
+                float currentPitch = Mathf.Lerp(0.8f, 1.5f, smoothedDragPower);
+                AudioManager.Instance.ModulateSound("Stretch", currentPitch);
+            }
+
             if (CurrentAnimator != null) CurrentAnimator.SetFloat("WindupPower", smoothedDragPower);
 
             if (timingSlider) timingSlider.value = smoothedDragPower;
@@ -405,7 +418,7 @@ public class LaunchSequenceManager : MonoBehaviour
             }
             yield return null;
         }
-
+        if (AudioManager.Instance != null) AudioManager.Instance.Stop("Stretch");
         if (_isAborted) yield break;
 
         // --- NEW: Snap to raw input on release! ---
@@ -469,16 +482,16 @@ public class LaunchSequenceManager : MonoBehaviour
                 else Instantiate(hitParticlePrefab, spawnPos, Quaternion.identity);
             }
 
-            if (CustomCameraShaker.Instance != null) CustomCameraShaker.Instance.Shake(ShakeType.Epic);
-
+            if (CustomCameraShaker.Instance != null) CustomCameraShaker.Instance.Shake(ShakeType.Short);
+            AudioManager.Instance?.Play("Slap");
             yield return new WaitForSecondsRealtime(4f / 60f);
 
             Time.timeScale = 1.0f;
         }
         else
         {
+            AudioManager.Instance?.Play("Slap");
             yield return new WaitForSeconds(impactDelayAfterRelease);
-            if (CustomCameraShaker.Instance != null) CustomCameraShaker.Instance.Shake(ShakeType.Short);
         }
 
         if (_isAborted) yield break;
@@ -534,6 +547,7 @@ public class LaunchSequenceManager : MonoBehaviour
     {
         _isAborted = true;
         StopAllCoroutines();
+        if (AudioManager.Instance != null) AudioManager.Instance.Stop("Stretch");
         if (backButtonCanvasGroup != null)
         {
             backButtonCanvasGroup.blocksRaycasts = false;

@@ -71,6 +71,7 @@ public class ArcadeBoulder : MonoBehaviour
     [Header("Arcade Floating Text")]
     [Tooltip("Drag your FloatingText prefab here.")]
     public GameObject floatingTextPrefab;
+    private FloatingText _activeFloatingText; // Tracks the single active pop on screen
 
     [Tooltip("How fast the speedometer text catches up to the actual speed.")]
     public float speedUIDampening = 5f;
@@ -509,11 +510,13 @@ public class ArcadeBoulder : MonoBehaviour
             Vector3 spawnPos = transform.position + (moveDir * radius);
 
             SpawnScaledEffect(destroyed100PercentParticlePrefab, spawnPos);
+            currentStamina = 0;
         }
 
         if (floatingTextPrefab != null)
         {
-            StartCoroutine(SpawnDamagePopSequence(damagePercentage));
+            // Direct call instead of Coroutine for cleaner single-pop execution!
+            SpawnDamagePopSequence(damagePercentage);
         }
         float newSpeedKmh = currentSpeedKmh * (1f - damagePercentage);
         if (newSpeedKmh < 5f) newSpeedKmh = 5f;
@@ -566,9 +569,10 @@ public class ArcadeBoulder : MonoBehaviour
     }
 
     /// <summary>
-    /// Spawns a 1-2 punch arcade text sequence (e.g., "SMASHED!" followed by "-35% DAMAGE!").
+    /// Spawns a unified multi-line arcade pop (e.g., "SMASHED!\n-35% DAMAGE!").
+    /// Combined into one object to enforce the strict single-floating-text rule.
     /// </summary>
-    private System.Collections.IEnumerator SpawnDamagePopSequence(float damagePercentage)
+    private void SpawnDamagePopSequence(float damagePercentage)
     {
         int dmgPercent = Mathf.RoundToInt(damagePercentage * 100f);
         if (dmgPercent <= 0) dmgPercent = 1; // Ensure at least 1% displays on minor thuds
@@ -600,23 +604,26 @@ public class ArcadeBoulder : MonoBehaviour
 
         // 1. Calculate a base spawn point above the boulder's mesh
         float boulderRadius = transform.localScale.y * 0.5f;
-        Vector3 baseSpawnPos = transform.position + Vector3.up * (boulderRadius + 2.0f);
+        Vector3 spawnPos = transform.position + Vector3.up * (boulderRadius + 2.5f);
 
-        // 2. POP 1: The Arcade Word (Using Rich Text tags to make it thick and bold!)
-        SpawnSingleFloatingText($"<b>{arcadeWord}</b>", popColor, baseSpawnPos);
+        // 2. Combine into a single punchy 2-line text string
+        string combinedText = $"<b>{arcadeWord}</b>\n<size=110%><b><color=#FF1A1A>-{dmgPercent}% DAMAGE!</color></b></size>";
 
-        // 3. Wait a split second for that sequential rhythm!
-        // We use Realtime so the second pop still fires cleanly even if your hit-stop time freeze is active!
-        yield return new WaitForSecondsRealtime(0.08f);
-
-        // 4. POP 2: The Damage Percentage right above the word
-        Vector3 secondSpawnPos = baseSpawnPos + Vector3.up * 2f;
-        SpawnSingleFloatingText($"<b><size=120%>-{dmgPercent}% DAMAGE!</size></b>", Color.red, secondSpawnPos);
+        // 3. Spawn the single popup
+        SpawnSingleFloatingText(combinedText, popColor, spawnPos);
     }
 
     private void SpawnSingleFloatingText(string text, Color color, Vector3 spawnPos)
     {
         if (floatingTextPrefab == null) return;
+
+        // --- STRICT SINGLE-INSTANCE ENFORCEMENT ---
+        // If there is already a floating text active on screen, dismiss it immediately
+        // so it returns to the pool before we spawn the new one.
+        if (_activeFloatingText != null && _activeFloatingText.gameObject.activeInHierarchy)
+        {
+            _activeFloatingText.DismissImmediate();
+        }
 
         GameObject textObj = null;
         if (ObjectPooler.Instance != null)
@@ -633,7 +640,7 @@ public class ArcadeBoulder : MonoBehaviour
             FloatingText floatScript = textObj.GetComponent<FloatingText>();
             if (floatScript != null)
             {
-                // THE FIX: Pass 'transform' so the text knows to follow this boulder!
+                _activeFloatingText = floatScript; // Cache as the current active text
                 floatScript.Setup(text, color, transform);
             }
         }

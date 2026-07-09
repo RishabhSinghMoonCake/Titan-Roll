@@ -168,6 +168,7 @@ MonoBehaviour:
   maxDamagePenalty: 0.6
   fracturedPrefab: {fileID: 0}
   dustEffectPrefab: {fileID: 0}
+  destructibleType: 3
 --- !u!54 &4372739252043124210
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -193,7 +194,7 @@ Rigidbody:
   m_UseGravity: 1
   m_IsKinematic: 1
   m_Interpolate: 0
-  m_Constraints: 0
+  m_Constraints: 64
   m_CollisionDetection: 0
 --- !u!1 &6774080502169825540
 GameObject:

@@ -520,6 +520,8 @@ public class GameLevelManager : MonoBehaviour
             HighScoreVisuals.Instance.PlantNewRecordFlag(boulderPos);
         }
 
+        AudioManager.Instance?.Play("CoinSquirt");
+
         yield return new WaitForSeconds(0.6f);
 
         // ==========================================
@@ -607,6 +609,7 @@ public class GameLevelManager : MonoBehaviour
     private IEnumerator FinalizeAndReloadRoutine()
     {
         Camera mainCam = Camera.main;
+        
 
         foreach (var coin in _activeRewardCoins)
         {
@@ -636,6 +639,8 @@ public class GameLevelManager : MonoBehaviour
 
                 // Smooth Flight Tween
                 coin.transform.DOMove(worldTarget, coinFlightDuration).SetEase(Ease.InOutCubic);
+
+                
 
                 // Proportional Size Shrink
                 coin.transform.DOScale(targetUiScale, coinFlightDuration).SetEase(Ease.InOutCubic).OnComplete(() =>
@@ -731,6 +736,7 @@ public class GameLevelManager : MonoBehaviour
         if (levelClearedTitleText != null) levelClearedTitleText.text = $"LEVEL {currentLevel} CLEARED!";
         if (nextLevelPreviewText != null) nextLevelPreviewText.text = $"Entering Level {nextLevel}!";
         if (levelClearedBonusText != null) levelClearedBonusText.text = $"+{FormatMoney(startingGoldBonus)} GOLD BONUS";
+        AudioManager.Instance?.Play("Win");
     }
 
     /// <summary>

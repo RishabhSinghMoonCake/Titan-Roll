@@ -186,7 +186,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   textMesh: {fileID: 5573744817802986499}
-  popScale: 2.5
+  popScale: 1
   floatHeight: 3
   duration: 1.2
   sideScatter: 1.5
+  referenceCameraDistance: 15

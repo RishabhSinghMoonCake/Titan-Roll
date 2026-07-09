@@ -693,6 +693,7 @@ MonoBehaviour:
   fracturedPrefab: {fileID: 0}
   dustEffectPrefab: {fileID: 1952076019714368, guid: d42852d7985301b42a647ff270d3d088,
     type: 3}
+  destructibleType: 3
 --- !u!1 &1427132495417895352
 GameObject:
   m_ObjectHideFlags: 0
@@ -1301,6 +1302,7 @@ MonoBehaviour:
   fracturedPrefab: {fileID: 0}
   dustEffectPrefab: {fileID: 1952076019714368, guid: d42852d7985301b42a647ff270d3d088,
     type: 3}
+  destructibleType: 3
 --- !u!1 &2752261681757944545
 GameObject:
   m_ObjectHideFlags: 0
@@ -1509,6 +1511,7 @@ MonoBehaviour:
   fracturedPrefab: {fileID: 0}
   dustEffectPrefab: {fileID: 1952076019714368, guid: d42852d7985301b42a647ff270d3d088,
     type: 3}
+  destructibleType: 3
 --- !u!1 &2910528674448500560
 GameObject:
   m_ObjectHideFlags: 0
@@ -1850,8 +1853,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 3753942942048378261}
-  - component: {fileID: 4763374909276592506}
-  - component: {fileID: 7562421849090724634}
   m_Layer: 0
   m_Name: Train_Type B
   m_TagString: Untagged
@@ -1880,43 +1881,6 @@ Transform:
   - {fileID: 2199631880476485996}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!65 &4763374909276592506
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4001643604399492628}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_IsTrigger: 1
-  m_ProvidesContacts: 0
-  m_Enabled: 1
-  serializedVersion: 3
-  m_Size: {x: 4, y: 4, z: 120}
-  m_Center: {x: 0, y: 2, z: 0}
---- !u!114 &7562421849090724634
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4001643604399492628}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1825f86dea544914296c3a790cca8549, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  targetMassLevel: 1
-  maxDamagePenalty: 1
-  fracturedPrefab: {fileID: 0}
-  dustEffectPrefab: {fileID: 0}
 --- !u!1 &4036554282153967989
 GameObject:
   m_ObjectHideFlags: 0
@@ -2291,6 +2255,7 @@ MonoBehaviour:
   fracturedPrefab: {fileID: 0}
   dustEffectPrefab: {fileID: 1952076019714368, guid: d42852d7985301b42a647ff270d3d088,
     type: 3}
+  destructibleType: 3
 --- !u!1 &4561907203187246448
 GameObject:
   m_ObjectHideFlags: 0
@@ -2418,6 +2383,7 @@ MonoBehaviour:
   fracturedPrefab: {fileID: 0}
   dustEffectPrefab: {fileID: 1952076019714368, guid: d42852d7985301b42a647ff270d3d088,
     type: 3}
+  destructibleType: 3
 --- !u!1 &4648237310537486812
 GameObject:
   m_ObjectHideFlags: 0
@@ -4456,6 +4422,7 @@ MonoBehaviour:
   fracturedPrefab: {fileID: 0}
   dustEffectPrefab: {fileID: 1952076019714368, guid: d42852d7985301b42a647ff270d3d088,
     type: 3}
+  destructibleType: 3
 --- !u!1 &8979970434461677322
 GameObject:
   m_ObjectHideFlags: 0
